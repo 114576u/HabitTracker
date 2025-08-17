@@ -1,9 +1,10 @@
+
 from __future__ import annotations
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import date
+from datetime import date, datetime, timedelta
 import os
 
 app = Flask(__name__)
@@ -15,7 +16,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# ---------------- Models ----------------
+# ------------- Models -------------
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -35,7 +36,7 @@ class Habit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
-    kind = db.Column(db.String(50), nullable=False, default='checkbox')  # 'checkbox' | 'metrics'
+    kind = db.Column(db.String(50), nullable=False, default='checkbox')
     color = db.Column(db.String(20), nullable=False, default='#6366f1')
     records = db.relationship('Record', backref='habit', lazy=True, cascade='all, delete-orphan')
     tags = db.relationship('Tag', secondary='habit_tag', back_populates='habits')
@@ -45,19 +46,19 @@ class Record(db.Model):
     habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), nullable=False, index=True)
     date = db.Column(db.String(10), nullable=False, index=True)  # YYYY-MM-DD
     done = db.Column(db.Boolean, default=False, nullable=False)
-    time_min = db.Column(db.Float, nullable=True)      # for metrics habits
-    distance_km = db.Column(db.Float, nullable=True)   # for metrics habits
+    time_min = db.Column(db.Float, nullable=True)
+    distance_km = db.Column(db.Float, nullable=True)
     __table_args__ = (db.UniqueConstraint('habit_id', 'date', name='uniq_habit_date'), )
 
 class MediaEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    date = db.Column(db.String(10), nullable=False, index=True)      # YYYY-MM-DD
-    checked = db.Column(db.Boolean, default=False, nullable=False)   # checkbox
-    text = db.Column(db.String(500), nullable=False)                 # title/notes
-    link = db.Column(db.String(1000), nullable=True)                 # URL (optional)
-    category = db.Column(db.String(50), nullable=True)               # e.g., 'movie', 'book', 'series', optional
-    rating = db.Column(db.Integer, nullable=True)                    # 0-5 optional
+    date = db.Column(db.String(10), nullable=False, index=True)
+    checked = db.Column(db.Boolean, default=False, nullable=False)
+    text = db.Column(db.String(500), nullable=False)
+    link = db.Column(db.String(1000), nullable=True)
+    category = db.Column(db.String(50), nullable=True)
+    rating = db.Column(db.Integer, nullable=True)  # 0..5
     tags = db.relationship('Tag', secondary='media_entry_tag', back_populates='media_entries')
 
 class Tag(db.Model):
@@ -80,9 +81,12 @@ class MediaEntryTag(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except Exception:
+        return None
 
-# ---------------- Helpers ----------------
+# ------------- Helpers -------------
 
 def init_db():
     with app.app_context():
@@ -92,8 +96,7 @@ def get_or_create_tags(user_id: int, names):
     clean = [n.strip() for n in (names or []) if n and n.strip()]
     if not clean:
         return []
-    seen = set()
-    unique = []
+    seen = set(); unique = []
     for n in clean:
         key = n.lower()
         if key not in seen:
@@ -104,16 +107,23 @@ def get_or_create_tags(user_id: int, names):
     for n in to_create:
         t = Tag(user_id=user_id, name=n)
         db.session.add(t); existing.append(t)
-    if to_create:
-        db.session.commit()
+    if to_create: db.session.commit()
     return existing
 
-# ---------------- Views ----------------
+def parse_date(s: str) -> date:
+    return datetime.strptime(s, '%Y-%m-%d').date()
+
+# ------------- Views -------------
 
 @app.route('/')
 @login_required
 def index():
     return render_template('index.html')
+
+@app.route('/reports')
+@login_required
+def reports_page():
+    return render_template('reports.html')
 
 # -------- Auth --------
 
@@ -128,8 +138,7 @@ def register():
         if User.query.filter_by(email=email).first():
             flash('Email already registered', 'error')
             return redirect(url_for('register'))
-        user = User(email=email)
-        user.set_password(password)
+        user = User(email=email); user.set_password(password)
         db.session.add(user); db.session.commit()
         flash('Registration successful. Please log in.', 'success')
         return redirect(url_for('login'))
@@ -142,8 +151,7 @@ def login():
         password = request.form.get('password') or ''
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
-            login_user(user)
-            return redirect(url_for('index'))
+            login_user(user); return redirect(url_for('index'))
         flash('Invalid email or password', 'error')
         return redirect(url_for('login'))
     return render_template('login.html')
@@ -205,12 +213,11 @@ def api_media_add():
     link = (data.get('link') or '').strip() or None
     category = (data.get('category') or '').strip() or None
     checked = bool(data.get('checked', False))
-    rating = data.get('rating')
-    tags_in = data.get('tags', [])
+    rating = data.get('rating'); tags_in = data.get('tags', [])
     if not day or not text:
         return jsonify({'error': 'date and text required'}), 400
     e = MediaEntry(user_id=current_user.id, date=day, checked=checked, text=text, link=link, category=category)
-    if rating is not None and rating != '':
+    if rating not in (None, ''):
         try: e.rating = int(rating)
         except Exception: e.rating = None
     tag_objs = get_or_create_tags(current_user.id, tags_in)
@@ -259,8 +266,7 @@ def api_add_habit():
     if not name:
         return jsonify({'error': 'name required'}), 400
     h = Habit(user_id=current_user.id, name=name, kind=kind, color=color)
-    tag_objs = get_or_create_tags(current_user.id, tags_in)
-    h.tags = tag_objs
+    h.tags = get_or_create_tags(current_user.id, tags_in)
     db.session.add(h); db.session.commit()
     return jsonify({'ok': True, 'id': h.id})
 
@@ -270,9 +276,8 @@ def api_set_habit_tags():
     data = request.json or {}
     hid = data.get('id'); tags_in = data.get('tags', [])
     h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
-    tag_objs = get_or_create_tags(current_user.id, tags_in)
-    h.tags = tag_objs; db.session.commit()
-    return jsonify({'ok': True})
+    h.tags = get_or_create_tags(current_user.id, tags_in)
+    db.session.commit(); return jsonify({'ok': True})
 
 @app.post('/api/habits/delete')
 @login_required
@@ -321,9 +326,103 @@ def api_clear():
     hid = data.get('id'); day = data.get('date')
     h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
     rec = Record.query.filter_by(habit_id=h.id, date=day).first()
-    if rec:
-        db.session.delete(rec); db.session.commit()
+    if rec: db.session.delete(rec); db.session.commit()
     return jsonify({'ok': True})
+
+# -------- API: reports --------
+@app.get('/api/reports')
+@login_required
+def api_reports():
+    period = request.args.get('period', 'week')  # week|month|year
+    start = request.args.get('start')  # YYYY-MM-DD optional
+    sort_by = request.args.get('sort', 'date')   # date|habit|category|rating
+    tag = request.args.get('tag')  # optional single tag filter
+
+    today = date.today()
+    if start:
+        try:
+            base = parse_date(start)
+        except Exception:
+            base = today
+    else:
+        base = today
+
+    if period == 'year':
+        start_date = date(base.year, 1, 1)
+        end_date = date(base.year, 12, 31)
+    elif period == 'month':
+        start_date = date(base.year, base.month, 1)
+        if base.month == 12:
+            end_date = date(base.year, 12, 31)
+        else:
+            end_date = date(base.year, base.month + 1, 1) - timedelta(days=1)
+    else:  # week: Monday..Sunday
+        start_date = base - timedelta(days=(base.weekday()))  # Monday
+        end_date = start_date + timedelta(days=6)
+
+    s = start_date.strftime('%Y-%m-%d'); e = end_date.strftime('%Y-%m-%d')
+
+    # Habits: join with tags filter (habit-level tags)
+    habits = Habit.query.filter_by(user_id=current_user.id).all()
+    if tag:
+        habits = [h for h in habits if any(t.name.lower()==tag.lower() for t in h.tags)]
+    habit_rows = []
+    for h in habits:
+        for r in h.records:
+            if s <= r.date <= e:
+                row = {
+                    'type': 'habit',
+                    'date': r.date,
+                    'habit': h.name,
+                    'kind': h.kind,
+                    'done': bool(r.done),
+                    'timeMin': r.time_min or 0,
+                    'distanceKm': r.distance_km or 0,
+                    'tags': [t.name for t in h.tags]
+                }
+                habit_rows.append(row)
+
+    # Media entries: filter by date and tag (entry-level tags)
+    me_query = MediaEntry.query.filter(
+        MediaEntry.user_id == current_user.id,
+        MediaEntry.date >= s, MediaEntry.date <= e
+    )
+    media_rows = []
+    for eobj in me_query.all():
+        if tag and all(t.name.lower()!=tag.lower() for t in eobj.tags):
+            continue
+        media_rows.append({
+            'type': 'journal',
+            'date': eobj.date,
+            'category': eobj.category or '',
+            'text': eobj.text,
+            'link': eobj.link,
+            'checked': bool(eobj.checked),
+            'rating': eobj.rating,
+            'tags': [t.name for t in eobj.tags]
+        })
+
+    rows = habit_rows + media_rows
+
+    def sort_key(row):
+        if sort_by == 'habit':
+            return (row.get('habit','').lower(), row.get('date',''))
+        if sort_by == 'category':
+            return (row.get('category','').lower(), row.get('date',''))
+        if sort_by == 'rating':
+            # None ratings last
+            val = row.get('rating')
+            return (1, 0) if val is None else (0, -val)
+        return (row.get('date',''), row.get('habit','').lower())
+
+    rows.sort(key=sort_key)
+    return jsonify({
+        'start': s, 'end': e, 'period': period,
+        'count': len(rows),
+        'rows': rows
+    })
+
+# ------------- Startup -------------
 
 if __name__ == '__main__':
     init_db()

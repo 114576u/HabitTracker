@@ -1,0 +1,52 @@
+
+{% extends 'base.html' %}
+{% block content %}
+  <h2 class="subtitle">Reports</h2>
+  <div class="card">
+    <div class="row wrap">
+      <label>Period</label>
+      <select id="repPeriod">
+        <option value="week">Week</option>
+        <option value="month">Month</option>
+        <option value="year">Year</option>
+      </select>
+      <label>Start date</label>
+      <input id="repStart" type="date">
+      <label>Sort by</label>
+      <select id="repSort">
+        <option value="date">Date</option>
+        <option value="habit">Habit</option>
+        <option value="category">Category</option>
+        <option value="rating">Rating</option>
+      </select>
+      <label>Filter by tag</label>
+      <input id="repTag" type="text" placeholder="(optional)">
+      <button class="btn primary" onclick="runReport()">Run</button>
+    </div>
+  </div>
+
+  <div id="repMeta" class="mt muted"></div>
+
+  <div class="mt">
+    <table id="repTable">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Date</th>
+          <th>Habit / Title</th>
+          <th>Kind / Category</th>
+          <th>Done</th>
+          <th>Time (min)</th>
+          <th>Distance (km)</th>
+          <th>Rating</th>
+          <th>Tags</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script src="{{ url_for('static', filename='reports.js') }}"></script>
+  <script>initReports();</script>
+{% endblock %}

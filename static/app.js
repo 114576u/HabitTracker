@@ -1,3 +1,4 @@
+
 let state = { habits: [], today: "", selected: null, viewYear: null, viewMonth: null, entries: [], allTags: [] };
 let metricsHabitId = null;
 
