@@ -1,20 +1,21 @@
+
 let state = { habits: [], today: "", selected: null, viewYear: null, viewMonth: null };
 let metricsHabitId = null;
 
 async function fetchData(){
   const r = await fetch('/api/data');
+  if (r.status === 401) { location.href = '/login'; return; }
   const data = await r.json();
   state.habits = data.habits || [];
   state.today = data.today;
   const t = new Date(state.today);
   if (state.viewYear === null) { state.viewYear = t.getFullYear(); }
-  if (state.viewMonth === null) { state.viewMonth = t.getMonth(); } // 0-based
+  if (state.viewMonth === null) { state.viewMonth = t.getMonth(); }
   if (!state.selected) state.selected = state.today;
   render();
 }
 
 function ymd(d){ return d.toISOString().slice(0,10); }
-
 function startOfMonth(y, m){ return new Date(y, m, 1); }
 function endOfMonth(y, m){ return new Date(y, m+1, 0); }
 
@@ -27,24 +28,18 @@ function shiftMonth(n){
 
 function goToday(){
   const t = new Date(state.today);
-  state.viewYear = t.getFullYear();
-  state.viewMonth = t.getMonth();
-  state.selected = state.today;
+  state.viewYear = t.getFullYear(); state.viewMonth = t.getMonth(); state.selected = state.today;
   render();
 }
 
-function setSelected(dateStr){
-  state.selected = dateStr;
-  renderHabits();
-  renderCalendar(); // to update selection outline
-}
+function setSelected(dateStr){ state.selected = dateStr; renderHabits(); renderCalendar(); }
 
 function renderCalendar(){
   const monthLabel = document.getElementById('monthLabel');
   const calendar = document.getElementById('calendar');
   const monthStart = startOfMonth(state.viewYear, state.viewMonth);
   const monthEnd = endOfMonth(state.viewYear, state.viewMonth);
-  const startWeekday = (new Date(state.viewYear, state.viewMonth, 1).getDay() + 6) % 7; // make Monday=0
+  const startWeekday = (new Date(state.viewYear, state.viewMonth, 1).getDay() + 6) % 7; // Monday=0
   const totalDays = monthEnd.getDate();
 
   monthLabel.textContent = monthStart.toLocaleString(undefined, { month:'long', year:'numeric' });
@@ -56,19 +51,16 @@ function renderCalendar(){
   const prevMonth = new Date(state.viewYear, state.viewMonth, 0);
   const prevDays = prevMonth.getDate();
 
-  // leading days from previous month
   for (let i = 0; i < startWeekday; i++){
     const day = prevDays - startWeekday + 1 + i;
     const dt = new Date(state.viewYear, state.viewMonth-1, day);
     html += dayCellHTML(dt, true);
   }
-  // current month days
   for (let d = 1; d <= totalDays; d++){
     const dt = new Date(state.viewYear, state.viewMonth, d);
     html += dayCellHTML(dt, false);
   }
-  // trailing days to fill grid to multiple of 7
-  const cellsSoFar = 7 + startWeekday + totalDays; // 7 header + days
+  const cellsSoFar = 7 + startWeekday + totalDays;
   const remainder = cellsSoFar % 7;
   const add = remainder === 0 ? 0 : 7 - remainder;
   for (let i = 1; i <= add; i++){
@@ -77,7 +69,6 @@ function renderCalendar(){
   }
   calendar.innerHTML = html;
 
-  // attach click handlers
   [...calendar.querySelectorAll('.cal-cell')].forEach(cell => {
     cell.addEventListener('click', () => setSelected(cell.dataset.date));
   });
@@ -137,7 +128,7 @@ function renderHabits(){
   wrap.querySelectorAll('[data-act="metrics"]').forEach(btn => {
     btn.addEventListener('click', () => {
       metricsHabitId = btn.dataset.id;
-      const h = state.habits.find(x => x.id === metricsHabitId);
+      const h = state.habits.find(x => x.id == metricsHabitId);
       const rec = (h.records||{})[state.selected];
       document.getElementById('metricTime').value = rec && rec.metrics ? (rec.metrics.timeMin||'') : '';
       document.getElementById('metricDistance').value = rec && rec.metrics ? (rec.metrics.distanceKm||'') : '';
@@ -168,8 +159,7 @@ async function addHabit(){
   const kind = [...document.getElementsByName('habitKind')].find(r => r.checked)?.value || 'checkbox';
   if (!name) return;
   await fetch('/api/habits/add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, color, kind }) });
-  closeAddModal();
-  fetchData();
+  closeAddModal(); fetchData();
 }
 
 function closeMetrics(){ document.getElementById('metricsModal').classList.remove('show'); }
@@ -177,14 +167,12 @@ async function saveMetrics(){
   const timeMin = Number(document.getElementById('metricTime').value || 0);
   const distanceKm = Number(document.getElementById('metricDistance').value || 0);
   await fetch('/api/metrics', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id: metricsHabitId, date: state.selected, metrics: { timeMin, distanceKm } }) });
-  closeMetrics();
-  fetchData();
+  closeMetrics(); fetchData();
 }
 
 function render(){
   document.getElementById('selectedDate').textContent = state.selected;
-  renderCalendar();
-  renderHabits();
+  renderCalendar(); renderHabits();
 }
 
 window.addEventListener('DOMContentLoaded', fetchData);

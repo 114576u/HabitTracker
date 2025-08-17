@@ -1,6 +1,6 @@
+
 :root { --border:#e5e7eb; --muted:#6b7280; --text:#111827; --bg:#fafafa; }
 * { box-sizing: border-box; }
-
 body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color:var(--text); background:var(--bg); }
 .header { position:sticky; top:0; background:rgba(255,255,255,.9); border-bottom:1px solid var(--border); backdrop-filter:saturate(180%) blur(6px); }
 .container { max-width:1000px; margin:0 auto; padding:16px; }
@@ -26,7 +26,10 @@ body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI,
 .card { border:1px solid var(--border); border-radius:12px; background:#fff; padding:12px; margin-bottom:8px; }
 .badge { display:inline-block; padding:2px 8px; border-radius:10px; border:1px solid var(--border); font-size:12px; }
 .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-input[type="text"], input[type="number"], input[type="color"] { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:12px; }
+input[type="text"], input[type="password"], input[type="number"], input[type="color"] { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:12px; }
 
 .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.2); display:none; align-items:center; justify-content:center; padding:16px; }
 .modal-backdrop.show { display:flex; }
+.modal { background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px; width:100%; max-width:420px; }
+
+.auth-card { max-width:420px; margin:60px auto; background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px; }

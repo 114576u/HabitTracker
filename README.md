@@ -1,32 +1,40 @@
-# Habit Tracker (Flask)
 
-A simple habit tracker built with **Python + Flask**, using a plain **JSON file** for persistence.
+# Habit Tracker — Flask + SQLite + Login (Option 3)
+
+This version adds **user accounts** (register/login/logout) with **Flask-Login** and **SQLite** via SQLAlchemy.
+Each user has their own habits and records.
 
 ## Features
-- Add habits (checkbox or metrics)
-- Toggle completion per day
-- Enter metrics for specific habits
-- Data stored in `habits.json`
+- User registration and login (passwords hashed with Werkzeug)
+- SQLite database (`app.db` by default)
+- Calendar month view, select a day to log activity
+- Habit types: Checkbox or Metrics (Time min + Distance km)
+- Per-day toggle (checkbox) or metric entry
+- Simple, clean UI (no build tools)
 
-## Setup
-
+## Run locally
 ```bash
-# clone repo
-cd flask-habit-tracker
-
-# create venv
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# install deps
+python -m venv .venv
+source .venv/bin/activate  # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python app.py
+# open http://127.0.0.1:5000
+```
 
-# run app
+On first run, tables are created automatically. Register a user, log in, then add habits.
+
+## Configuration
+- `SECRET_KEY`: set an env var for sessions in production
+- `DATABASE_URL`: override to use another SQLite path or Postgres URL
+
+Examples:
+```bash
+export SECRET_KEY='change-me'
+export DATABASE_URL='sqlite:///app.db'   # default
 python app.py
 ```
 
-Visit http://127.0.0.1:5000
-
-## Notes
-- All data is stored in `habits.json` in the project root.
-- Extendable to SQLite or Postgres in the future.
+## Tech
+- Flask, Flask-Login, Flask-SQLAlchemy
+- SQLite for storage
+- Werkzeug for password hashing
