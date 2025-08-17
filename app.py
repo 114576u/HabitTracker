@@ -15,11 +15,15 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# ---------------- Models ----------------
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     habits = db.relationship('Habit', backref='user', lazy=True, cascade='all, delete-orphan')
+    media_entries = db.relationship('MediaEntry', backref='user', lazy=True, cascade='all, delete-orphan')
+    tags = db.relationship('Tag', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
@@ -31,27 +35,87 @@ class Habit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
-    kind = db.Column(db.String(50), nullable=False, default='checkbox')
+    kind = db.Column(db.String(50), nullable=False, default='checkbox')  # 'checkbox' | 'metrics'
     color = db.Column(db.String(20), nullable=False, default='#6366f1')
     records = db.relationship('Record', backref='habit', lazy=True, cascade='all, delete-orphan')
+    tags = db.relationship('Tag', secondary='habit_tag', back_populates='habits')
 
 class Record(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), nullable=False, index=True)
     date = db.Column(db.String(10), nullable=False, index=True)  # YYYY-MM-DD
     done = db.Column(db.Boolean, default=False, nullable=False)
-    time_min = db.Column(db.Float, nullable=True)
-    distance_km = db.Column(db.Float, nullable=True)
+    time_min = db.Column(db.Float, nullable=True)      # for metrics habits
+    distance_km = db.Column(db.Float, nullable=True)   # for metrics habits
     __table_args__ = (db.UniqueConstraint('habit_id', 'date', name='uniq_habit_date'), )
+
+class MediaEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    date = db.Column(db.String(10), nullable=False, index=True)      # YYYY-MM-DD
+    checked = db.Column(db.Boolean, default=False, nullable=False)   # checkbox
+    text = db.Column(db.String(500), nullable=False)                 # title/notes
+    link = db.Column(db.String(1000), nullable=True)                 # URL (optional)
+    category = db.Column(db.String(50), nullable=True)               # e.g., 'movie', 'book', 'series', optional
+    rating = db.Column(db.Integer, nullable=True)                    # 0-5 optional
+    tags = db.relationship('Tag', secondary='media_entry_tag', back_populates='media_entries')
+
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    name = db.Column(db.String(50), nullable=False)
+    __table_args__ = (db.UniqueConstraint('user_id', 'name', name='uniq_user_tagname'), )
+    habits = db.relationship('Habit', secondary='habit_tag', back_populates='tags')
+    media_entries = db.relationship('MediaEntry', secondary='media_entry_tag', back_populates='tags')
+
+class HabitTag(db.Model):
+    __tablename__ = 'habit_tag'
+    habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tag.id'), primary_key=True)
+
+class MediaEntryTag(db.Model):
+    __tablename__ = 'media_entry_tag'
+    media_entry_id = db.Column(db.Integer, db.ForeignKey('media_entry.id'), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tag.id'), primary_key=True)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# ---------------- Helpers ----------------
+
+def init_db():
+    with app.app_context():
+        db.create_all()
+
+def get_or_create_tags(user_id: int, names):
+    clean = [n.strip() for n in (names or []) if n and n.strip()]
+    if not clean:
+        return []
+    seen = set()
+    unique = []
+    for n in clean:
+        key = n.lower()
+        if key not in seen:
+            seen.add(key); unique.append(n)
+    existing = Tag.query.filter(Tag.user_id==user_id, Tag.name.in_(unique)).all()
+    existing_names = {t.name for t in existing}
+    to_create = [n for n in unique if n not in existing_names]
+    for n in to_create:
+        t = Tag(user_id=user_id, name=n)
+        db.session.add(t); existing.append(t)
+    if to_create:
+        db.session.commit()
+    return existing
+
+# ---------------- Views ----------------
+
 @app.route('/')
 @login_required
 def index():
     return render_template('index.html')
+
+# -------- Auth --------
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -66,8 +130,7 @@ def register():
             return redirect(url_for('register'))
         user = User(email=email)
         user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
+        db.session.add(user); db.session.commit()
         flash('Registration successful. Please log in.', 'success')
         return redirect(url_for('login'))
     return render_template('register.html')
@@ -88,8 +151,17 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    logout_user()
-    return redirect(url_for('login'))
+    logout_user(); return redirect(url_for('login'))
+
+# -------- API: tags --------
+
+@app.get('/api/tags')
+@login_required
+def api_tags():
+    tags = Tag.query.filter_by(user_id=current_user.id).order_by(Tag.name.asc()).all()
+    return jsonify([t.name for t in tags])
+
+# -------- API: data --------
 
 @app.get('/api/data')
 @login_required
@@ -103,8 +175,78 @@ def api_data():
                 rec_map[r.date] = bool(r.done)
             else:
                 rec_map[r.date] = {'done': bool(r.done), 'metrics': {'timeMin': r.time_min or 0, 'distanceKm': r.distance_km or 0}}
-        payload.append({'id': h.id, 'name': h.name, 'kind': h.kind, 'color': h.color, 'records': rec_map})
+        payload.append({
+            'id': h.id, 'name': h.name, 'kind': h.kind, 'color': h.color,
+            'tags': [t.name for t in h.tags],
+            'records': rec_map
+        })
     return jsonify({'today': date.today().isoformat(), 'habits': payload})
+
+# -------- API: media --------
+
+@app.get('/api/media/list')
+@login_required
+def api_media_list():
+    day = request.args.get('date')
+    if not day:
+        return jsonify({'error': 'date required'}), 400
+    entries = MediaEntry.query.filter_by(user_id=current_user.id, date=day).order_by(MediaEntry.id.desc()).all()
+    return jsonify([{
+        'id': e.id, 'date': e.date, 'checked': e.checked, 'text': e.text,
+        'link': e.link, 'category': e.category, 'rating': e.rating,
+        'tags': [t.name for t in e.tags]
+    } for e in entries])
+
+@app.post('/api/media/add')
+@login_required
+def api_media_add():
+    data = request.json or {}
+    day = data.get('date'); text = (data.get('text') or '').strip()
+    link = (data.get('link') or '').strip() or None
+    category = (data.get('category') or '').strip() or None
+    checked = bool(data.get('checked', False))
+    rating = data.get('rating')
+    tags_in = data.get('tags', [])
+    if not day or not text:
+        return jsonify({'error': 'date and text required'}), 400
+    e = MediaEntry(user_id=current_user.id, date=day, checked=checked, text=text, link=link, category=category)
+    if rating is not None and rating != '':
+        try: e.rating = int(rating)
+        except Exception: e.rating = None
+    tag_objs = get_or_create_tags(current_user.id, tags_in)
+    for t in tag_objs: e.tags.append(t)
+    db.session.add(e); db.session.commit()
+    return jsonify({'ok': True, 'id': e.id})
+
+@app.post('/api/media/update')
+@login_required
+def api_media_update():
+    data = request.json or {}
+    eid = data.get('id')
+    e = MediaEntry.query.filter_by(id=eid, user_id=current_user.id).first_or_404()
+    if 'checked' in data: e.checked = bool(data['checked'])
+    if 'text' in data: e.text = (data['text'] or '').strip()
+    if 'link' in data: e.link = (data['link'] or '').strip() or None
+    if 'category' in data: e.category = (data['category'] or '').strip() or None
+    if 'rating' in data:
+        try: e.rating = int(data['rating']) if data['rating'] not in (None, '') else None
+        except Exception: e.rating = None
+    if 'tags' in data:
+        tag_objs = get_or_create_tags(current_user.id, data.get('tags') or [])
+        e.tags = tag_objs
+    db.session.commit()
+    return jsonify({'ok': True})
+
+@app.post('/api/media/delete')
+@login_required
+def api_media_delete():
+    data = request.json or {}
+    eid = data.get('id')
+    e = MediaEntry.query.filter_by(id=eid, user_id=current_user.id).first_or_404()
+    db.session.delete(e); db.session.commit()
+    return jsonify({'ok': True})
+
+# -------- Habit APIs --------
 
 @app.post('/api/habits/add')
 @login_required
@@ -113,12 +255,24 @@ def api_add_habit():
     name = (data.get('name') or '').strip()
     kind = data.get('kind') or 'checkbox'
     color = data.get('color') or '#6366f1'
+    tags_in = data.get('tags', [])
     if not name:
         return jsonify({'error': 'name required'}), 400
     h = Habit(user_id=current_user.id, name=name, kind=kind, color=color)
-    db.session.add(h)
-    db.session.commit()
+    tag_objs = get_or_create_tags(current_user.id, tags_in)
+    h.tags = tag_objs
+    db.session.add(h); db.session.commit()
     return jsonify({'ok': True, 'id': h.id})
+
+@app.post('/api/habits/tags')
+@login_required
+def api_set_habit_tags():
+    data = request.json or {}
+    hid = data.get('id'); tags_in = data.get('tags', [])
+    h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
+    tag_objs = get_or_create_tags(current_user.id, tags_in)
+    h.tags = tag_objs; db.session.commit()
+    return jsonify({'ok': True})
 
 @app.post('/api/habits/delete')
 @login_required
@@ -126,32 +280,27 @@ def api_delete_habit():
     data = request.json or {}
     hid = data.get('id')
     h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
-    db.session.delete(h)
-    db.session.commit()
+    db.session.delete(h); db.session.commit()
     return jsonify({'ok': True})
 
 @app.post('/api/toggle')
 @login_required
 def api_toggle():
     data = request.json or {}
-    hid = data.get('id')
-    day = data.get('date')
+    hid = data.get('id'); day = data.get('date')
     h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
     rec = Record.query.filter_by(habit_id=h.id, date=day).first()
     if not rec:
-        rec = Record(habit_id=h.id, date=day, done=True)
-        db.session.add(rec)
+        rec = Record(habit_id=h.id, date=day, done=True); db.session.add(rec)
     else:
         rec.done = not rec.done
-    db.session.commit()
-    return jsonify({'ok': True})
+    db.session.commit(); return jsonify({'ok': True})
 
 @app.post('/api/metrics')
 @login_required
 def api_metrics():
     data = request.json or {}
-    hid = data.get('id')
-    day = data.get('date')
+    hid = data.get('id'); day = data.get('date')
     metrics = data.get('metrics', {})
     h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
     if h.kind != 'metrics':
@@ -161,30 +310,20 @@ def api_metrics():
     done = (time_min > 0) or (distance_km > 0)
     rec = Record.query.filter_by(habit_id=h.id, date=day).first()
     if not rec:
-        rec = Record(habit_id=h.id, date=day)
-        db.session.add(rec)
-    rec.done = done
-    rec.time_min = time_min
-    rec.distance_km = distance_km
-    db.session.commit()
-    return jsonify({'ok': True})
+        rec = Record(habit_id=h.id, date=day); db.session.add(rec)
+    rec.done = done; rec.time_min = time_min; rec.distance_km = distance_km
+    db.session.commit(); return jsonify({'ok': True})
 
 @app.post('/api/clear')
 @login_required
 def api_clear():
     data = request.json or {}
-    hid = data.get('id')
-    day = data.get('date')
+    hid = data.get('id'); day = data.get('date')
     h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
     rec = Record.query.filter_by(habit_id=h.id, date=day).first()
     if rec:
-        db.session.delete(rec)
-        db.session.commit()
+        db.session.delete(rec); db.session.commit()
     return jsonify({'ok': True})
-
-def init_db():
-    with app.app_context():
-        db.create_all()
 
 if __name__ == '__main__':
     init_db()

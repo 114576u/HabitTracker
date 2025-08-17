@@ -1,18 +1,35 @@
-
-let state = { habits: [], today: "", selected: null, viewYear: null, viewMonth: null };
+let state = { habits: [], today: "", selected: null, viewYear: null, viewMonth: null, entries: [], allTags: [] };
 let metricsHabitId = null;
+
+function parseTags(str){
+  if (!str) return [];
+  const out = []; const seen = new Set();
+  for (let raw of str.split(',')){
+    const t = raw.trim(); if (!t) continue;
+    const key = t.toLowerCase(); if (!seen.has(key)){ seen.add(key); out.push(t); }
+  }
+  return out;
+}
+
+async function fetchAllTags(){
+  const r = await fetch('/api/tags'); if (r.ok) state.allTags = await r.json();
+}
 
 async function fetchData(){
   const r = await fetch('/api/data');
   if (r.status === 401) { location.href = '/login'; return; }
   const data = await r.json();
-  state.habits = data.habits || [];
-  state.today = data.today;
+  state.habits = data.habits || []; state.today = data.today;
   const t = new Date(state.today);
   if (state.viewYear === null) { state.viewYear = t.getFullYear(); }
   if (state.viewMonth === null) { state.viewMonth = t.getMonth(); }
   if (!state.selected) state.selected = state.today;
-  render();
+  await fetchAllTags(); await loadEntries(); render();
+}
+
+async function loadEntries(){
+  const r = await fetch('/api/media/list?date=' + encodeURIComponent(state.selected));
+  if (r.ok){ state.entries = await r.json(); } else { state.entries = []; }
 }
 
 function ymd(d){ return d.toISOString().slice(0,10); }
@@ -29,17 +46,17 @@ function shiftMonth(n){
 function goToday(){
   const t = new Date(state.today);
   state.viewYear = t.getFullYear(); state.viewMonth = t.getMonth(); state.selected = state.today;
-  render();
+  fetchData();
 }
 
-function setSelected(dateStr){ state.selected = dateStr; renderHabits(); renderCalendar(); }
+function setSelected(dateStr){ state.selected = dateStr; fetchData(); }
 
 function renderCalendar(){
   const monthLabel = document.getElementById('monthLabel');
   const calendar = document.getElementById('calendar');
   const monthStart = startOfMonth(state.viewYear, state.viewMonth);
   const monthEnd = endOfMonth(state.viewYear, state.viewMonth);
-  const startWeekday = (new Date(state.viewYear, state.viewMonth, 1).getDay() + 6) % 7; // Monday=0
+  const startWeekday = (new Date(state.viewYear, state.viewMonth, 1).getDay() + 6) % 7;
   const totalDays = monthEnd.getDate();
 
   monthLabel.textContent = monthStart.toLocaleString(undefined, { month:'long', year:'numeric' });
@@ -85,6 +102,11 @@ function dayCellHTML(dt, otherMonth){
   </div>`;
 }
 
+function tagBadges(tags){
+  if (!tags || !tags.length) return '<span class="muted">no tags</span>';
+  return tags.map(t => `<span class="tag">${t}</span>`).join(' ');
+}
+
 function renderHabits(){
   const wrap = document.getElementById('habits');
   if (!state.habits.length){
@@ -101,12 +123,18 @@ function renderHabits(){
           ? `${rec.metrics.timeMin||0} min • ${rec.metrics.distanceKm||0} km`
           : '—');
 
+    const tags = h.tags || [];
     html += `<div class="card">
       <div class="row">
         <div class="badge" style="border-color:${h.color}">${h.name}</div>
         <div class="muted">(${h.kind})</div>
         <div class="spacer"></div>
         <div class="muted">${badge}</div>
+      </div>
+      <div class="mt">${tagBadges(tags)}</div>
+      <div class="row mt">
+        <input class="grow" type="text" placeholder="add tags (comma separated)" value="${tags.join(', ')}" data-habit-tags="${h.id}">
+        <button class="btn" data-act="saveHabitTags" data-id="${h.id}">Save tags</button>
       </div>
       <div class="actions">
         ${h.kind === 'checkbox'
@@ -149,6 +177,65 @@ function renderHabits(){
       fetchData();
     });
   });
+  wrap.querySelectorAll('[data-act="saveHabitTags"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const input = document.querySelector(`[data-habit-tags="${btn.dataset.id}"]`);
+      const tags = parseTags(input.value);
+      await fetch('/api/habits/tags', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id, tags }) });
+      fetchData();
+    });
+  });
+}
+
+function renderEntries(){
+  const wrap = document.getElementById('entries');
+  if (!state.entries.length){
+    wrap.innerHTML = '<div class="muted">No entries for this day yet.</div>';
+    return;
+  }
+  let html = '';
+  for (const e of state.entries){
+    const checked = e.checked ? 'checked' : '';
+    const rating = (e.rating ?? '') + '';
+    const tags = e.tags || [];
+    html += `<div class="entry" data-id="${e.id}">
+      <input type="checkbox" data-act="toggle" ${checked}>
+      <input class="grow" type="text" data-act="text" value="${e.text.replace(/"/g,'&quot;')}">
+      <input class="grow" type="text" data-act="link" placeholder="link" value="${e.link || ''}">
+      <input type="text" data-act="category" placeholder="category" value="${e.category || ''}" style="width:120px">
+      <label>Rating</label>
+      <select data-act="rating" style="width:80px">
+        <option value="" ${rating===''?'selected':''}>(none)</option>
+        ${[0,1,2,3,4,5].map(n => `<option value="${n}" ${rating===(n+'')?'selected':''}>${n}</option>`).join('')}
+      </select>
+      <input class="grow" type="text" data-act="tags" placeholder="tags (comma separated)" value="${tags.join(', ')}">
+      <button class="btn" data-act="save">Save</button>
+      <button class="btn" data-act="delete">Delete</button>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.entry').forEach(row => {
+    const id = row.dataset.id;
+    row.querySelector('[data-act="toggle"]').addEventListener('change', async (ev) => {
+      await fetch('/api/media/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, checked: ev.target.checked }) });
+    });
+    row.querySelector('[data-act="save"]').addEventListener('click', async () => {
+      const text = row.querySelector('[data-act="text"]').value;
+      const link = row.querySelector('[data-act="link"]').value;
+      const category = row.querySelector('[data-act="category"]').value;
+      const ratingSel = row.querySelector('[data-act="rating"]');
+      const rating = ratingSel.value === '' ? null : Number(ratingSel.value);
+      const tags = parseTags(row.querySelector('[data-act="tags"]').value);
+      await fetch('/api/media/update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, text, link, category, rating, tags }) });
+      await loadEntries(); renderEntries();
+    });
+    row.querySelector('[data-act="delete"]').addEventListener('click', async () => {
+      if (!confirm('Delete this entry?')) return;
+      await fetch('/api/media/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+      await loadEntries(); renderEntries();
+    });
+  });
 }
 
 function openAddModal(){ document.getElementById('addModal').classList.add('show'); }
@@ -157,9 +244,25 @@ async function addHabit(){
   const name = document.getElementById('habitName').value.trim();
   const color = document.getElementById('habitColor').value;
   const kind = [...document.getElementsByName('habitKind')].find(r => r.checked)?.value || 'checkbox';
+  const tags = parseTags(document.getElementById('habitTags').value);
   if (!name) return;
-  await fetch('/api/habits/add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, color, kind }) });
+  await fetch('/api/habits/add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, color, kind, tags }) });
   closeAddModal(); fetchData();
+}
+
+async function addEntry(){
+  const text = document.getElementById('entryText').value.trim();
+  const link = document.getElementById('entryLink').value.trim();
+  const category = document.getElementById('entryCategory').value.trim();
+  const checked = document.getElementById('entryChecked').checked;
+  const ratingStr = document.getElementById('entryRating').value;
+  const rating = ratingStr === '' ? null : Number(ratingStr);
+  const tags = parseTags(document.getElementById('entryTags').value);
+  if (!text) return;
+  await fetch('/api/media/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date: state.selected, text, link, category, checked, rating, tags }) });
+  document.getElementById('entryText').value=''; document.getElementById('entryLink').value='';
+  document.getElementById('entryChecked').checked=false; document.getElementById('entryRating').value=''; document.getElementById('entryTags').value='';
+  await loadEntries(); renderEntries();
 }
 
 function closeMetrics(){ document.getElementById('metricsModal').classList.remove('show'); }
@@ -172,7 +275,7 @@ async function saveMetrics(){
 
 function render(){
   document.getElementById('selectedDate').textContent = state.selected;
-  renderCalendar(); renderHabits();
+  renderCalendar(); renderHabits(); renderEntries();
 }
 
 window.addEventListener('DOMContentLoaded', fetchData);
