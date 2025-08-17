@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Habit Tracker — Calendar</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <div class="container row">
+      <h1 class="title">Habit Tracker</h1>
+      <div class="spacer"></div>
+      <button class="btn" onclick="openAddModal()">+ New habit</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="row mb">
+      <button class="btn" onclick="shiftMonth(-1)">◀ Prev</button>
+      <button class="btn" onclick="goToday()">Today</button>
+      <button class="btn" onclick="shiftMonth(1)">Next ▶</button>
+      <div class="spacer"></div>
+      <div class="muted" id="monthLabel"></div>
+    </section>
+
+    <section class="calendar" id="calendar"></section>
+
+    <section class="mb">
+      <div class="row">
+        <h2 class="subtitle">Habits</h2>
+        <div class="spacer"></div>
+        <div class="muted">Selected day: <span id="selectedDate"></span></div>
+      </div>
+      <div id="habits"></div>
+    </section>
+  </main>
+
+  <!-- Add habit modal -->
+  <div class="modal-backdrop" id="addModal" onclick="closeAddModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Add habit</h3>
+      <label>Name</label>
+      <input id="habitName" type="text" placeholder="e.g., Run, Meditate">
+      <div class="row">
+        <label><input type="radio" name="habitKind" value="checkbox" checked> Checkbox</label>
+        <label><input type="radio" name="habitKind" value="metrics"> Metrics (time + distance)</label>
+      </div>
+      <label>Color</label>
+      <input id="habitColor" type="color" value="#6366f1">
+      <div class="row right">
+        <button class="btn" onclick="closeAddModal()">Cancel</button>
+        <button class="btn primary" onclick="addHabit()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics modal -->
+  <div class="modal-backdrop" id="metricsModal" onclick="closeMetrics()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3 id="metricsTitle">Enter values</h3>
+      <label>Time (min)</label>
+      <input id="metricTime" type="number" step="1">
+      <label>Distance (km)</label>
+      <input id="metricDistance" type="number" step="0.01">
+      <div class="row right">
+        <button class="btn" onclick="closeMetrics()">Cancel</button>
+        <button class="btn primary" onclick="saveMetrics()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
