@@ -1,8 +1,7 @@
-
-:root { --border:#e5e7eb; --muted:#6b7280; --text:#111827; --bg:#fafafa; }
+:root { --border:#e5e7eb; --muted:#6b7280; --text:#111827; --bg:#fafafa; --activity:#e0f2fe; --activityToday:#dbeafe; }
 * { box-sizing: border-box; }
 body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color:var(--text); background:#fafafa; }
-.header { position:sticky; top:0; background:rgba(255,255,255,.9); border-bottom:1px solid var(--border); backdrop-filter:saturate(180%) blur(6px); }
+.header { position:sticky; top:0; background:#ffffff; border-bottom:1px solid var(--border); z-index:1000; }
 .container { max-width:1100px; margin:0 auto; padding:16px; }
 .row { display:flex; gap:8px; align-items:center; }
 .wrap { flex-wrap: wrap; }
@@ -18,11 +17,13 @@ body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI,
 .cal-head, .cal-cell { padding:8px; border-bottom:1px solid var(--border); border-right:1px solid var(--border); text-align:center; }
 .cal-head:nth-child(7n), .cal-cell:nth-child(7n) { border-right:none; }
 .cal-head { background:#f8fafc; font-size:12px; color:var(--muted); font-weight:600; }
-.cal-cell { min-height:60px; cursor:pointer; position:relative; }
+.cal-cell { min-height:64px; cursor:pointer; position:relative; transition: background .15s ease; }
 .cal-cell.other { color:#a1a1aa; background:#fdfdfd; }
 .cal-cell .date { position:absolute; top:4px; left:6px; font-size:12px; }
 .cal-cell.selected { outline:2px solid #111827; outline-offset:-2px; }
 .cal-cell.today { background:#f3f4f6; }
+.cal-cell.has-activity { background: var(--activity); }
+.cal-cell.today.has-activity { background: var(--activityToday); }
 .card { border:1px solid var(--border); border-radius:12px; background:#fff; padding:12px; margin-bottom:8px; }
 .badge { display:inline-block; padding:2px 8px; border-radius:10px; border:1px solid var(--border); font-size:12px; }
 .actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
@@ -39,3 +40,38 @@ input[type="text"], input[type="password"], input[type="number"], input[type="co
 table { width:100%; border-collapse: collapse; }
 th, td { border:1px solid var(--border); padding:8px; text-align:left; }
 th { background:#f8fafc; }
+
+
+/* Grid layout for habit cards */
+#habits { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; }
+#habits .card { margin-bottom: 0; } /* grid gap handles spacing */
+@media (max-width: 900px){
+  #habits { grid-template-columns: 1fr; }
+}
+
+
+/* Stronger button visuals (same shape) */
+.btn { position:relative; transition: transform .04s ease, box-shadow .12s ease; box-shadow: 0 1px 0 rgba(16,24,40,.04); }
+.btn:hover { box-shadow: 0 2px 6px rgba(16,24,40,.12); }
+.btn:active { transform: translateY(1px); }
+.btn.action { border-color:#2563eb; background:#e8f0ff; color:#0b1b3a; }
+.btn.action:hover { background:#dbe7ff; }
+.btn.warn { border-color:#d97706; background:#fff3e6; color:#7a2e00; }
+.btn.warn:hover { background:#ffe7cc; }
+.btn.danger { border-color:#dc2626; background:#ffecec; color:#7a0910; }
+.btn.danger:hover { background:#ffdcdc; }
+.btn.primary { background:#111827; color:#fff; border-color:#111827; }
+
+main.container { padding-top: 12px; }
+
+
+/* Color-coded habit cards */
+.card[data-color] { border-left: 6px solid var(--border); position: relative; }
+.card[data-color]::before {
+  content: "";
+  position: absolute; left:0; top:0; bottom:0; width:6px;
+  background: attr(data-color color, #6366f1);
+  border-top-left-radius:12px; border-bottom-left-radius:12px;
+}
+.badge.name { border-color: currentColor; }
+.card[data-color] .badge.name { background: var(--badgeColor, #111827); color:#fff; border-color: transparent; }

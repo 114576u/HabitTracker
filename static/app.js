@@ -1,6 +1,8 @@
-
-let state = { habits: [], today: "", selected: null, viewYear: null, viewMonth: null, entries: [], allTags: [] };
+let state = { habits: [], today: "", selected: null, viewYear: null, viewMonth: null, entries: [], allTags: [], activity: {} };
 let metricsHabitId = null;
+let numericHabitId = null;
+let numericUnit = '';
+let numericAllowMulti = false;
 
 function parseTags(str){
   if (!str) return [];
@@ -21,11 +23,25 @@ async function fetchData(){
   if (r.status === 401) { location.href = '/login'; return; }
   const data = await r.json();
   state.habits = data.habits || []; state.today = data.today;
-  const t = new Date(state.today);
+  const t = parseYMD(state.today);
   if (state.viewYear === null) { state.viewYear = t.getFullYear(); }
   if (state.viewMonth === null) { state.viewMonth = t.getMonth(); }
   if (!state.selected) state.selected = state.today;
-  await fetchAllTags(); await loadEntries(); render();
+  await fetchAllTags();
+  await loadActivity();   // load activity for current month
+  await loadEntries(); render();
+}
+
+async function loadActivity(){
+  const m = String(state.viewMonth + 1).padStart(2,'0');
+  const q = `${state.viewYear}-${m}`;
+  const r = await fetch('/api/activity?month=' + q);
+  if (r.ok) {
+    const data = await r.json();
+    state.activity = data.dateCounts || {};
+  } else {
+    state.activity = {};
+  }
 }
 
 async function loadEntries(){
@@ -33,21 +49,32 @@ async function loadEntries(){
   if (r.ok){ state.entries = await r.json(); } else { state.entries = []; }
 }
 
-function ymd(d){ return d.toISOString().slice(0,10); }
+function ymd(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function parseYMD(str){
+  const [y,m,d] = (str||"").split('-').map(s=>parseInt(s,10));
+  if (!y||!m||!d) return new Date();
+  return new Date(y, m-1, d);
+}
 function startOfMonth(y, m){ return new Date(y, m, 1); }
 function endOfMonth(y, m){ return new Date(y, m+1, 0); }
 
-function shiftMonth(n){
+async function shiftMonth(n){
   state.viewMonth += n;
   if (state.viewMonth < 0) { state.viewMonth += 12; state.viewYear--; }
   if (state.viewMonth > 11) { state.viewMonth -= 12; state.viewYear++; }
+  await loadActivity();
   renderCalendar();
 }
 
-function goToday(){
-  const t = new Date(state.today);
+async function goToday(){
+  const t = parseYMD(state.today);
   state.viewYear = t.getFullYear(); state.viewMonth = t.getMonth(); state.selected = state.today;
-  fetchData();
+  await fetchData();
 }
 
 function setSelected(dateStr){ state.selected = dateStr; fetchData(); }
@@ -98,7 +125,8 @@ function dayCellHTML(dt, otherMonth){
   const dateStr = ymd(dt);
   const isToday = (dateStr === state.today);
   const isSelected = (dateStr === state.selected);
-  return `<div class="cal-cell ${otherMonth?'other':''} ${isToday?'today':''} ${isSelected?'selected':''}" data-date="${dateStr}">
+  const hasActivity = !!state.activity[dateStr];
+  return `<div class="cal-cell ${otherMonth?'other':''} ${isToday?'today':''} ${isSelected?'selected':''} ${hasActivity?'has-activity':''}" data-date="${dateStr}">
     <div class="date">${dt.getDate()}</div>
   </div>`;
 }
@@ -118,13 +146,18 @@ function renderHabits(){
   for (const h of state.habits){
     const rec = (h.records||{})[state.selected];
     const done = (typeof rec === 'boolean') ? rec : (rec && rec.done);
-    const badge = h.kind === 'checkbox'
-      ? (done ? 'Done' : 'Not done')
-      : (rec && rec.metrics
-          ? `${rec.metrics.timeMin||0} min • ${rec.metrics.distanceKm||0} km`
-          : '—');
+    let badge;
+    if (h.kind === 'checkbox'){
+      badge = (done ? 'Done' : 'Not done');
+    } else if (h.kind === 'metrics'){
+      badge = (rec && rec.metrics) ? `${rec.metrics.timeMin||0} min • ${rec.metrics.distanceKm||0} km` : '—';
+    } else if (h.kind === 'numeric'){
+      const v = (rec && rec.value != null) ? rec.value : 0;
+      badge = `${v}${h.unit?(' '+h.unit):''}`;
+    }
 
     const tags = h.tags || [];
+    const goal = (h.monthlyGoal ?? '') + '';
     html += `<div class="card">
       <div class="row">
         <div class="badge" style="border-color:${h.color}">${h.name}</div>
@@ -133,9 +166,11 @@ function renderHabits(){
         <div class="muted">${badge}</div>
       </div>
       <div class="mt">${tagBadges(tags)}</div>
-      <div class="row mt">
+      <div class="row mt wrap">
         <input class="grow" type="text" placeholder="add tags (comma separated)" value="${tags.join(', ')}" data-habit-tags="${h.id}">
         <button class="btn" data-act="saveHabitTags" data-id="${h.id}">Save tags</button>
+        <input style="max-width:180px" type="number" min="0" placeholder="monthly goal" value="${goal}" data-habit-goal="${h.id}">
+        <button class="btn" data-act="saveHabitGoal" data-id="${h.id}">Save goal</button>
       </div>
       <div class="actions">
         ${h.kind === 'checkbox'
@@ -147,6 +182,7 @@ function renderHabits(){
     </div>`;
   }
   wrap.innerHTML = html;
+  bindNumericHandlers(wrap);
 
   wrap.querySelectorAll('[data-act="toggle"]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -162,12 +198,36 @@ function renderHabits(){
       document.getElementById('metricTime').value = rec && rec.metrics ? (rec.metrics.timeMin||'') : '';
       document.getElementById('metricDistance').value = rec && rec.metrics ? (rec.metrics.distanceKm||'') : '';
       document.getElementById('metricsTitle').textContent = `${h.name} • ${state.selected}`;
+      document.getElementById('metricsFields').style.display = 'block';
+      document.getElementById('numericFields').style.display = 'none';
+      document.getElementById('metricsModal').classList.add('show');
+    });
+  });
+  wrap.querySelectorAll('[data-act="numOpen"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const h = state.habits.find(x => x.id == btn.dataset.id);
+      numericHabitId = h.id; numericUnit = h.unit || ''; numericAllowMulti = !!h.allowMulti;
+      document.getElementById('metricsTitle').textContent = `${h.name} • ${state.selected}`;
+      // show numeric, hide metrics
+      document.getElementById('metricsFields').style.display = 'none';
+      document.getElementById('numericFields').style.display = 'block';
+      const lab = document.getElementById('numericLabel');
+      lab.textContent = 'Value' + (numericUnit ? ` (${numericUnit})` : '');
+      document.getElementById('numericValue').value = '';
       document.getElementById('metricsModal').classList.add('show');
     });
   });
   wrap.querySelectorAll('[data-act="clear"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       await fetch('/api/clear', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id: btn.dataset.id, date: state.selected }) });
+      fetchData();
+    });
+  });
+  wrap.querySelectorAll('[data-act="toggleActive"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const h = state.habits.find(x => x.id == btn.dataset.id);
+      const active = !(h && h.active !== false);
+      await fetch('/api/habits/active', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id, active }) });
       fetchData();
     });
   });
@@ -183,6 +243,14 @@ function renderHabits(){
       const input = document.querySelector(`[data-habit-tags="${btn.dataset.id}"]`);
       const tags = parseTags(input.value);
       await fetch('/api/habits/tags', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id, tags }) });
+      fetchData();
+    });
+  });
+  wrap.querySelectorAll('[data-act="saveHabitGoal"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const input = document.querySelector(`[data-habit-goal="${btn.dataset.id}"]`);
+      const monthlyGoal = input.value === '' ? null : Number(input.value);
+      await fetch('/api/habits/goal', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id, monthlyGoal }) });
       fetchData();
     });
   });
@@ -215,6 +283,7 @@ function renderEntries(){
     </div>`;
   }
   wrap.innerHTML = html;
+  bindNumericHandlers(wrap);
 
   wrap.querySelectorAll('.entry').forEach(row => {
     const id = row.dataset.id;
@@ -246,8 +315,10 @@ async function addHabit(){
   const color = document.getElementById('habitColor').value;
   const kind = [...document.getElementsByName('habitKind')].find(r => r.checked)?.value || 'checkbox';
   const tags = parseTags(document.getElementById('habitTags').value);
+  const monthlyGoalStr = document.getElementById('habitMonthlyGoal').value;
+  const monthlyGoal = monthlyGoalStr === '' ? null : Number(monthlyGoalStr);
   if (!name) return;
-  await fetch('/api/habits/add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, color, kind, tags }) });
+  await fetch('/api/habits/add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, color, kind, tags, monthlyGoal }) });
   closeAddModal(); fetchData();
 }
 
@@ -263,11 +334,20 @@ async function addEntry(){
   await fetch('/api/media/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date: state.selected, text, link, category, checked, rating, tags }) });
   document.getElementById('entryText').value=''; document.getElementById('entryLink').value='';
   document.getElementById('entryChecked').checked=false; document.getElementById('entryRating').value=''; document.getElementById('entryTags').value='';
-  await loadEntries(); renderEntries();
+  await loadEntries(); renderEntries(); await loadActivity(); renderCalendar();
 }
 
-function closeMetrics(){ document.getElementById('metricsModal').classList.remove('show'); }
+function closeMetrics(){ document.getElementById('metricsModal').classList.remove('show'); numericHabitId = null; }
 async function saveMetrics(){
+  // If numeric modal is open, numericHabitId will be set
+  if (numericHabitId){
+    const value = Number(document.getElementById('numericValue').value || 0);
+    await fetch('/api/numeric/set', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: numericHabitId, date: state.selected, value }) });
+    numericHabitId = null; numericUnit = ''; numericAllowMulti = false;
+    closeMetrics(); fetchData();
+    return;
+  }
+  // Else treat as metrics (time + distance)
   const timeMin = Number(document.getElementById('metricTime').value || 0);
   const distanceKm = Number(document.getElementById('metricDistance').value || 0);
   await fetch('/api/metrics', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id: metricsHabitId, date: state.selected, metrics: { timeMin, distanceKm } }) });
@@ -280,3 +360,42 @@ function render(){
 }
 
 window.addEventListener('DOMContentLoaded', fetchData);
+
+// show/hide numeric options in Add Habit modal
+window.addEventListener('DOMContentLoaded', () => {
+  const radios = document.getElementsByName('habitKind');
+  const numOpts = document.getElementById('numericOpts');
+  function refreshKind(){
+    const kind = [...radios].find(r => r.checked)?.value;
+    if (numOpts) numOpts.style.display = (kind === 'numeric') ? 'block' : 'none';
+  }
+  [...radios].forEach(r => r.addEventListener('change', refreshKind));
+  refreshKind();
+});
+
+function bindNumericHandlers(wrap){
+  wrap.querySelectorAll('[data-act="numAdd"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const inp = document.querySelector(`[data-num-input="${btn.dataset.id}"]`);
+      const value = Number(inp.value || 0);
+      if (isNaN(value)) return;
+      await fetch('/api/numeric/set', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id, date: state.selected, value }) });
+      fetchData();
+    });
+  });
+  wrap.querySelectorAll('[data-act="numSet"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const inp = document.querySelector(`[data-num-input="${btn.dataset.id}"]`);
+      const value = Number(inp.value || 0);
+      if (isNaN(value)) return;
+      await fetch('/api/numeric/set', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id, date: state.selected, value }) });
+      fetchData();
+    });
+  });
+  wrap.querySelectorAll('[data-act="numClear"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await fetch('/api/numeric/clear', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id, date: state.selected }) });
+      fetchData();
+    });
+  });
+}

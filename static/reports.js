@@ -1,4 +1,3 @@
-
 function ymd(d){ return d.toISOString().slice(0,10); }
 
 async function initReports(){
@@ -24,8 +23,20 @@ async function runReport(){
 
   document.getElementById('repMeta').textContent = `Showing ${data.count} rows • ${data.start} → ${data.end}`;
 
+  // Goals table
+  document.getElementById('goalsMonth').textContent = data.goalsMonth || '';
+  const gbody = document.querySelector('#goalsTable tbody');
+  gbody.innerHTML = '';
+  for (const g of (data.goals||[])){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${g.habit}</td><td>${g.monthlyGoal}</td><td>${g.doneCount}</td><td>${g.percent}%</td>`;
+    gbody.appendChild(tr);
+  }
+
+  // Rows table
   const tbody = document.querySelector('#repTable tbody');
   tbody.innerHTML = '';
+  renderSummary(data);
   for (const row of data.rows){
     const tr = document.createElement('tr');
     const tags = (row.tags||[]).join(', ');
@@ -44,3 +55,32 @@ async function runReport(){
     tbody.appendChild(tr);
   }
 }
+
+// Render summary with streaks
+function renderSummary(data){
+  const tbody = document.querySelector('#summaryTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  (data.summary || []).forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><span class="badge" style="border-color:${row.color}">${row.habit}</span></td>
+      <td>${row.kind}</td>
+      <td>${row.count}</td>
+      <td>${row.kind==='numeric' ? (row.sum || 0) : ''}</td>
+      <td>${row.kind==='numeric' ? (row.unit || '') : ''}</td>
+      <td>${row.currentStreak || 0}</td>
+      <td>${row.bestStreak || 0}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+
+document.getElementById('btnExportCsv')?.addEventListener('click', () => {
+  const period = document.getElementById('periodSel')?.value || 'week';
+  const start = document.getElementById('startDate')?.value || '';
+  const tag = document.getElementById('filterTag')?.value || '';
+  const params = new URLSearchParams({ period, start });
+  if (tag) params.set('tag', tag);
+  const url = '/export/csv?' + params.toString();
+  window.location.href = url;
+});

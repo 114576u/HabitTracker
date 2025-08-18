@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 {% block content %}
   <h2 class="subtitle">Reports</h2>
@@ -26,6 +25,22 @@
   </div>
 
   <div id="repMeta" class="mt muted"></div>
+
+  <div class="mt">
+    <h3 class="subtitle">Monthly goals (<span id="goalsMonth"></span>)</h3>
+    <table id="goalsTable">
+      <thead><tr><th>Habit</th><th>Goal</th><th>Done</th><th>Progress</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="mt">
+    <h3 class="subtitle">Summary & Streaks</h3>
+    <table id="summaryTable">
+      <thead><tr><th>Habit</th><th>Kind</th><th>Days done</th><th>Total (numeric)</th><th>Unit</th><th>Current streak</th><th>Best streak</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
   <div class="mt">
     <table id="repTable">
