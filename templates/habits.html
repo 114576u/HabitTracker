@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Habit Tracker – Habits</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <div class="container row between">
+      <div class="brand">Habit Tracker</div>
+      <nav>
+        <a href="/" class="nav">Home</a>
+        <a href="/habits" class="nav active">Habits</a>
+        <a href="/reports" class="nav">Reports</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>Manage Habits</h1>
+
+    <section class="card">
+      <div class="card-header"><div class="card-title">Create a new habit</div></div>
+      <div class="card-body">
+        <div class="row wrap">
+          <input id="hName" class="grow" placeholder="Habit name">
+          <input id="hTags" placeholder="tags (comma separated)">
+          <input id="hMonthlyGoal" type="number" min="0" placeholder="monthly goal (optional)" style="max-width:200px">
+          <input id="hColor" type="color" value="#6366f1" title="Color">
+        </div>
+        <div class="row wrap mt">
+          <label><input type="radio" name="hKind" value="checkbox" checked> Checkbox</label>
+          <label><input type="radio" name="hKind" value="metrics"> Metrics (time + distance)</label>
+          <label><input type="radio" name="hKind" value="numeric"> Numeric (value + unit)</label>
+        </div>
+        <div id="hNumeric" class="mt" style="display:none">
+          <div class="row wrap">
+            <input id="hUnit" placeholder="Unit (e.g., mL, km, EUR)" style="max-width:220px">
+            <label>Aggregation</label>
+            <select id="hAgg">
+              <option value="sum">sum</option>
+              <option value="avg">avg</option>
+              <option value="min">min</option>
+              <option value="max">max</option>
+              <option value="last">last</option>
+            </select>
+            <label><input id="hAllowMulti" type="checkbox"> Allow multiple entries per day</label>
+            <input id="hDailyGoal" type="number" step="0.01" placeholder="Daily goal (optional)" style="max-width:220px">
+          </div>
+        </div>
+        <div class="row" style="justify-content:flex-end">
+          <button id="btnCreateHabit" class="btn action">Create habit</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt">
+      <h2 class="subtitle">Your habits</h2>
+      <div id="habitList" class="grid-2"></div>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='habits.js') }}"></script>
+</body>
+</html>

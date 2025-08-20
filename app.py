@@ -719,11 +719,7 @@ def api_reports():
             'goals': goals
         })
 
-# ------------- Startup -------------
 
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
 
 class NumericEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -870,3 +866,17 @@ def export_csv():
     csv_bytes = out.getvalue()
     filename = f"habit_export_{s}_to_{e}.csv"
     return Response(csv_bytes, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename={filename}'})
+
+
+@app.route('/habits', methods=['GET'])
+@login_required
+def habits_page():
+    return render_template('habits.html')
+
+
+# ------------- Startup -------------
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True)
+

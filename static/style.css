@@ -75,3 +75,8 @@ main.container { padding-top: 12px; }
 }
 .badge.name { border-color: currentColor; }
 .card[data-color] .badge.name { background: var(--badgeColor, #111827); color:#fff; border-color: transparent; }
+
+
+.grid-2 { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
+@media (max-width: 900px){ .grid-2 { grid-template-columns: 1fr; } }
+.nav.active { font-weight:600; text-decoration: underline; }
