@@ -14,7 +14,7 @@
     <div class="row">
       <h2 class="subtitle">Habits</h2>
       <div class="spacer"></div>
-      <div class="muted">Selected day: <span id="selectedDate"></span></div>
+      <div class="muted">Selected day: <span id="selectedDate"></span><input id="selectedDay" type="hidden"></div>
       <button class="btn" onclick="openAddModal()">+ New habit</button>
     </div>
     <div id="habits"></div>
@@ -49,43 +49,7 @@
     </div>
   </section>
 
-  <div class="modal-backdrop" id="addModal" onclick="closeAddModal()">
-    <div class="modal" onclick="event.stopPropagation()">
-      <h3>Add habit</h3>
-      <label>Name</label>
-      <input id="habitName" type="text" placeholder="e.g., Run, Meditate">
-      <div class="row">
-        <label><input type="radio" name="habitKind" value="checkbox" checked> Checkbox</label>
-        <label><input type="radio" name="habitKind" value="metrics"> Metrics (time + distance)</label>
-        <label><input type="radio" name="habitKind" value="numeric"> Numeric (value + unit)</label>
-      </div>
-      <div id="numericOpts" class="mt" style="display:none">
-        <div class="row wrap">
-          <input id="numUnit" type="text" placeholder="Unit (e.g., mL, km, EUR)" style="max-width:220px">
-          <label>Aggregation</label>
-          <select id="numAgg">
-            <option value="sum">sum</option>
-            <option value="avg">avg</option>
-            <option value="min">min</option>
-            <option value="max">max</option>
-            <option value="last">last</option>
-          </select>
-          <label><input id="numAllowMulti" type="checkbox"> Allow multiple entries per day</label>
-          <input id="numDailyGoal" type="number" step="0.01" placeholder="Daily goal (optional)" style="max-width:220px">
-        </div>
-      </div>
-      <label>Color</label>
-      <input id="habitColor" type="color" value="#6366f1">
-      <label>Monthly goal (times/month)</label>
-      <input id="habitMonthlyGoal" type="number" min="0" placeholder="e.g., 10">
-      <label>Tags (comma separated)</label>
-      <input id="habitTags" type="text" placeholder="e.g., health, cardio">
-      <div class="row" style="justify-content:flex-end">
-        <button class="btn" onclick="closeAddModal()">Cancel</button>
-        <button class="btn primary" onclick="addHabit()">Save</button>
-      </div>
-    </div>
-  </div>
+  
 
   <div class="modal-backdrop" id="metricsModal" onclick="closeMetrics()">
     <div class="modal" onclick="event.stopPropagation()">
