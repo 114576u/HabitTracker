@@ -83,3 +83,19 @@ document.getElementById('btnExportCsv')?.addEventListener('click', () => {
   const url = '/export/csv?' + params.toString();
   window.location.href = url;
 });
+
+
+function exportCSV() {
+  const period = document.getElementById("repPeriod").value;
+  const start = document.getElementById("repStart").value;
+  const tag = document.getElementById("repTag").value.trim();
+  const params = new URLSearchParams({
+    period: period,
+    start: start
+  });
+  if (tag !== "") {
+    params.append("tag", tag);
+  }
+  const url = `/export/csv?${params.toString()}`;
+  window.location.href = url;
+}

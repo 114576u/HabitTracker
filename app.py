@@ -858,8 +858,6 @@ def export_csv():
                         'habit': h.name,
                         'kind': h.kind,
                         'done': True,
-                        'timeMin': 0,
-                        'distanceKm': 0,
                         'value': float(rr['total'] or 0),
                         'unit': h.unit or '',
                         'text': '',
@@ -881,8 +879,6 @@ def export_csv():
             'habit': '',
             'kind': me.category or '',
             'done': bool(me.checked),
-            'timeMin': 0,
-            'distanceKm': 0,
             'value': me.rating if me.rating is not None else '',
             'unit': 'rating',
             'text': me.text,
@@ -891,7 +887,7 @@ def export_csv():
         })
 
     # Prepare CSV
-    cols = ['type','date','habit','kind','done','timeMin','distanceKm','value','unit','text','link','tags']
+    cols = ['type','date','habit','kind','done','value','unit','text','link','tags']
     out = StringIO()
     writer = csv.DictWriter(out, fieldnames=cols, extrasaction='ignore')
     writer.writeheader()
@@ -902,12 +898,6 @@ def export_csv():
     return Response(csv_bytes, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename={filename}'})
 
 
-# @app.route('/habits', methods=['GET'])
-# @login_required
-# def habits_page():
-    #     habits = get_all_habits()  # Replace with your actual DB access function
-#     return render_template('habits.html', habits=habits)
-#     # return render_template('habits.html')
 
 @app.route('/habits')
 @login_required
