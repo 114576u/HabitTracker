@@ -228,8 +228,6 @@ function clearFormInputs() {
 
 
 function deleteHabit(habitId) {
-  if (!confirm("Are you sure you want to delete this habit?")) return;
-
   fetch(`/api/delete_habit/${habitId}`, {
     method: 'DELETE',
     headers: {
@@ -254,7 +252,9 @@ function deleteHabit(habitId) {
         document.getElementById("habit-list").innerHTML = "<p>No habits yet. Start by creating one above!</p>";
       }
     } else {
-      return res.json().then(data => { throw new Error(data.error); });
+      return res.json()
+        .then(data => { throw new Error(data.message); })
+        .catch(() => { throw new Error("Server did not return valid JSON"); });
     }
   })
   .catch(err => {
@@ -263,10 +263,33 @@ function deleteHabit(habitId) {
 }
 
 
+function showConfirmDialog(habitId) {
+  const modal = document.getElementById('confirmModal');
+  const yesBtn = document.getElementById('confirmYes');
+  const noBtn = document.getElementById('confirmNo');
+  const closeModal = () => {
+    modal.style.display = 'none';
+  };
+  // Remove any previous 'click' event listeners
+  const newYesBtn = yesBtn.cloneNode(true);
+  yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+  newYesBtn.addEventListener('click', () => {
+    closeModal();
+    deleteHabit(habitId);
+  });
+  noBtn.onclick = () => {
+    console.log("Canceled deletion");
+    closeModal();
+  };
+  modal.style.display = 'block';
+}
+
+
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('delete-btn')) {
     const habitId = e.target.getAttribute('data-id');
-    deleteHabit(habitId);
+    //deleteHabit(habitId);
+    showConfirmDialog(habitId);
   }
 });
 
