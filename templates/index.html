@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
+  <!-- Calendar controls -->
   <section class="row mb">
     <button class="btn" onclick="shiftMonth(-1)">◀ Prev</button>
     <button class="btn" onclick="goToday()">Today</button>
@@ -8,18 +9,29 @@
     <div class="muted" id="monthLabel"></div>
   </section>
 
+  <!-- Calendar grid -->
   <section class="calendar" id="calendar"></section>
 
+  <!-- Habit picker + single habit card -->
   <section class="mb">
-    <div class="row">
+    <div class="row wrap">
       <h2 class="subtitle">Habits</h2>
       <div class="spacer"></div>
       <div class="muted">Selected day: <span id="selectedDate"></span><input id="selectedDay" type="hidden"></div>
-      <button class="btn" onclick="openAddModal()">+ New habit</button>
     </div>
-    <div id="habits"></div>
+
+    <div class="card">
+      <div class="row wrap">
+        <select id="habitSelect" style="min-width:260px"></select>
+        <button class="btn action" id="openHabitBtn">Use habit</button>
+        <div class="muted">Pick a habit to set for this day. The detailed card will appear below.</div>
+      </div>
+    </div>
+
+    <div id="habitCard"></div>
   </section>
 
+  <!-- Journal -->
   <section class="mb">
     <div class="row">
       <h2 class="subtitle">Journal (movies, books, etc.)</h2>
@@ -40,7 +52,8 @@
         <label>Rating</label>
         <select id="entryRating">
           <option value="">(none)</option>
-          <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+          <option>0</option><option>1</option><option>2</option>
+          <option>3</option><option>4</option><option>5</option>
         </select>
         <input id="entryTags" type="text" placeholder="tags (comma separated)">
         <button class="btn primary" onclick="addEntry()">Add</button>
@@ -49,8 +62,7 @@
     </div>
   </section>
 
-  
-
+  <!-- Modal for metrics/numeric -->
   <div class="modal-backdrop" id="metricsModal" onclick="closeMetrics()">
     <div class="modal" onclick="event.stopPropagation()">
       <h3 id="metricsTitle">Enter values</h3>
@@ -67,7 +79,7 @@
         <input id="numericValue" type="number" step="0.01">
       </div>
 
-      <div class="row" style="justify-content:flex-end">
+      <div class="row right">
         <button class="btn" onclick="closeMetrics()">Cancel</button>
         <button class="btn primary" onclick="saveMetrics()">Save</button>
       </div>

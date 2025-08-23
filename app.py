@@ -450,6 +450,51 @@ def api_delete_habit():
     db.session.delete(h); db.session.commit()
     return jsonify({'ok': True})
 
+
+@app.get('/api/habit/values')
+@login_required
+def get_habit_values():
+    habit_id = request.args.get('habit_id', type=int)
+    date_str = request.args.get('date')
+    if not habit_id or not date_str:
+        return jsonify({'error': 'Missing parameters'}), 400
+    record = Record.query.join(Habit).filter(
+        Record.habit_id == habit_id,
+        Record.date == date_str,
+        Habit.user_id == current_user.id
+    ).first()
+    if not record:
+        return jsonify({'value': None})
+    if record.habit.kind == 'numeric':
+        return jsonify({'value': record.value})
+    elif record.habit.kind == 'metrics':
+        return jsonify({'time_min': record.time_min, 'distance_km': record.distance_km})
+    elif record.habit.kind == 'checkbox':
+        return jsonify({'done': bool(record.done)})
+    else:
+        return jsonify({'value': None})
+
+
+@app.post('/api/habit/delete-value')
+@login_required
+def delete_habit_value():
+    data = request.get_json()
+    habit_id = data.get('habit_id')
+    date_str = data.get('date')
+    if not habit_id or not date_str:
+        return jsonify({'error': 'Missing parameters'}), 400
+    record = Record.query.join(Habit).filter(
+        Record.habit_id == habit_id,
+        Record.date == date_str,
+        Habit.user_id == current_user.id
+    ).first()
+    if record:
+        db.session.delete(record)
+        db.session.commit()
+    return jsonify({'success': True})
+
+
+
 @app.post('/api/toggle')
 @login_required
 def api_toggle():
