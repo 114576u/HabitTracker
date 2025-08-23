@@ -58,39 +58,16 @@ function populateHabitPicker(){
 function getHabitById(id){ return state.habits.find(h=>String(h.id)===String(id)); }
 
 
-function renderSelectedHabitCard() {
-  const wrap = el('habitCard');
-  if (!wrap) return;
-
-  if (!state.selectedHabitId) {
-    wrap.innerHTML = '<div class="muted">Select a habit above.</div>';
-    return;
-  }
+function renderSelectedHabitCard(){
+  const wrap = el('habitCard'); if(!wrap) return;
+  if(!state.selectedHabitId){ wrap.innerHTML = '<div class="muted">Select a habit above.</div>'; return; }
 
   const h = getHabitById(state.selectedHabitId);
-  if (!h) {
-    wrap.innerHTML = '<div class="muted">Habit not found or inactive.</div>';
-    return;
-  }
+  if(!h){ wrap.innerHTML = '<div class="muted">Habit not found or inactive.</div>'; return; }
 
   const day = state.selectedDay;
   const value = h.records?.[day] ?? null;
-  const primary = h.kind === 'checkbox' ? 'Toggle' : (value ? 'Edit value' : 'Enter value');
-  const tags = (h.tags || []).map(t => `<span class="badge">${t}</span>`).join(' ');
-
-  // ✅ Fix how the value is displayed
-  let displayValue = '';
-  if (value !== null) {
-    if (h.kind === 'numeric' && value && typeof value === 'object') {
-      displayValue = value.value;
-    } else if (h.kind === 'metrics' && value && typeof value === 'object') {
-      displayValue = `Time: ${value.metrics?.timeMin || 0} min, Distance: ${value.metrics?.distanceKm || 0} km`;
-    } else if (typeof value === 'boolean') {
-      displayValue = value ? '✓ Done' : '✗ Not done';
-    } else {
-      displayValue = value;
-    }
-  }
+  const primary = h.kind==='checkbox' ? 'Toggle' : (value ? 'Edit value' : 'Enter value');
 
   wrap.innerHTML = `
     <div class="card" data-id="${h.id}">
@@ -99,41 +76,26 @@ function renderSelectedHabitCard() {
         <div class="spacer"></div><div class="muted">${h.kind}</div>
       </div>
       <div class="card-body">
-        <div class="mt">${tags}</div>
-        ${value !== null ? `<p>Value: <strong>${displayValue}</strong></p>` : '<p>No value set for this day.</p>'}
+        ${value !== null ? `<p>Value: <strong>${value.value ?? value}</strong></p>` : '<p>No value set for this day.</p>'}
         <div class="row wrap">
           <button class="btn action" id="habitPrimary">${primary}</button>
           ${value ? `<button class="btn danger" id="habitValueDelete">Delete value</button>` : ''}
-          <button class="btn danger" id="habitDelete">Delete habit</button>
         </div>
       </div>
     </div>`;
 
-  el('habitPrimary').addEventListener('click', () =>
-    primaryAction(String(h.id), h.kind)
-  );
+  el('habitPrimary').addEventListener('click', ()=>primaryAction(String(h.id), h.kind));
 
   if (el('habitValueDelete')) {
-    el('habitValueDelete').addEventListener('click', async () => {
+    el('habitValueDelete').addEventListener('click', async ()=>{
       await fetch('/api/habit/delete-value', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ habit_id: h.id, date: day })
       });
       await loadAndRender();
     });
   }
-
-  el('habitDelete').addEventListener('click', async () => {
-    if (!confirm('Delete this habit?')) return;
-    await fetch('/api/habits/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: h.id })
-    });
-    state.selectedHabitId = null;
-    await loadAndRender();
-  });
 }
 
 
