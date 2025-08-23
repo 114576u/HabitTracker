@@ -1,10 +1,10 @@
-<div class="habit-card-container habit-card" data-id="{{ habit.id }}" style="border-left: 8px solid {{ habit.color }}; background-color: #f9f9f9; padding: 1rem; margin-bottom: 1rem; border-radius: 6px;">
+<div class="habit-card" data-id="{{ habit.id }}" style="border-left: 8px solid {{ habit.color }}; background-color: #f9f9f9; padding: 1rem; margin-bottom: 1rem; border-radius: 6px;">
   <div class="habit-header" style="display: flex; justify-content: space-between; align-items: center;">
     <strong style="font-size: 1.1rem;">{{ habit.name }}</strong>
 
     <div class="habit-actions">
       <button class="btn btn-sm edit-btn" onclick="editHabit({{ habit.id }})" title="Edit">🖉</button>
-      <button class="btn btn-sm delete-btn" onclick="deleteHabit({{ habit.id }})" title="Delete">🗑</button>
+      <button class="btn btn-sm delete-btn" data-id="{{ habit.id }}" title="Delete">🗑</button>
     </div>
   </div>
 

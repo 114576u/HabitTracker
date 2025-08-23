@@ -239,8 +239,15 @@ function deleteHabit(habitId) {
   .then(res => {
     if (res.ok) {
       // Remove the habit card from the DOM
-      const card = document.querySelector(`.habit-card[data-id="${habitId}"]`);
-      if (card) card.remove();
+      const deleteButton = document.querySelector(`.delete-btn[data-id="${habitId}"]`);
+      const card = deleteButton?.closest(".habit-card");
+      if (card) {
+        card.style.transition = 'opacity 0.3s ease, height 0.3s ease, margin 0.3s ease';
+        card.style.opacity = '0';
+        card.style.height = '0';
+        card.style.margin = '0';
+        setTimeout(() => card.remove(), 300);
+      }
 
       // If no cards remain, show the empty message
       if (document.querySelectorAll(".habit-card").length === 0) {
@@ -255,6 +262,13 @@ function deleteHabit(habitId) {
   });
 }
 
+
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('delete-btn')) {
+    const habitId = e.target.getAttribute('data-id');
+    deleteHabit(habitId);
+  }
+});
 
 
 
