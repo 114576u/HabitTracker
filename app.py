@@ -957,6 +957,31 @@ def get_all_habits():
     return [dict(row) for row in habits]
 
 
+@app.route("/api/delete_habit/<int:habit_id>", methods=["DELETE"])
+@login_required
+def delete_habit(habit_id):
+    db = get_db_connection()
+    try:
+        result = db.execute(
+            "DELETE FROM habit WHERE id = ? AND user_id = ?", (habit_id, current_user.id)
+        )
+        db.commit()
+        db.close()
+        if result.rowcount == 0:
+            return jsonify({"success": False, "message": "Habit not found or not yours"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    if request.is_json or request.accept_mimetypes.best == 'application/json':
+        return jsonify({"success": False, "message": "Login required"}), 401
+    return redirect(url_for("login"))
+
+
 
 # ------------- Startup -------------
 

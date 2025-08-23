@@ -227,6 +227,35 @@ function clearFormInputs() {
 }
 
 
+function deleteHabit(habitId) {
+  if (!confirm("Are you sure you want to delete this habit?")) return;
+
+  fetch(`/api/delete_habit/${habitId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+  .then(res => {
+    if (res.ok) {
+      // Remove the habit card from the DOM
+      const card = document.querySelector(`.habit-card[data-id="${habitId}"]`);
+      if (card) card.remove();
+
+      // If no cards remain, show the empty message
+      if (document.querySelectorAll(".habit-card").length === 0) {
+        document.getElementById("habit-list").innerHTML = "<p>No habits yet. Start by creating one above!</p>";
+      }
+    } else {
+      return res.json().then(data => { throw new Error(data.error); });
+    }
+  })
+  .catch(err => {
+    alert("Error deleting habit: " + err.message);
+  });
+}
+
+
 
 
 // Show/hide numeric opts
