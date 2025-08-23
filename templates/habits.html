@@ -1,23 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Habit Tracker – Habits</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-  <header class="header">
-    <div class="container row between">
-      <div class="brand">Habit Tracker</div>
-      <nav>
-        <a href="/" class="nav">Home</a>
-        <a href="/habits" class="nav active">Habits</a>
-        <a href="/reports" class="nav">Reports</a>
-      </nav>
-    </div>
-  </header>
+{% extends "base.html" %}
+{% block content %}
 
-  <main class="container">
     <h1>Manage Habits</h1>
 
     <section class="card">
@@ -59,8 +42,7 @@
       <h2 class="subtitle">Your habits</h2>
       <div id="habitList" class="grid-2"></div>
     </section>
-  </main>
 
   <script src="{{ url_for('static', filename='habits.js') }}"></script>
-</body>
-</html>
+
+{% endblock %}
