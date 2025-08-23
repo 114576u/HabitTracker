@@ -54,8 +54,6 @@ class Record(db.Model):
     habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), nullable=False, index=True)
     date = db.Column(db.String(10), nullable=False, index=True)  # YYYY-MM-DD
     done = db.Column(db.Boolean, default=False, nullable=False)
-    time_min = db.Column(db.Float, nullable=True)      # for metrics habits
-    distance_km = db.Column(db.Float, nullable=True)   # for metrics habits
     value = db.Column(db.Float, nullable=True)         # for numeric (non-multi)
     __table_args__ = (db.UniqueConstraint('habit_id', 'date', name='uniq_habit_date'), )
 
@@ -228,8 +226,6 @@ def api_data():
         for r in h.records:
             if h.kind == 'checkbox':
                 rec_map[r.date] = bool(r.done)
-            elif h.kind == 'metrics':
-                rec_map[r.date] = {'done': bool(r.done), 'metrics': {'timeMin': r.time_min or 0, 'distanceKm': r.distance_km or 0}}
             elif h.kind == 'numeric' and not h.allow_multi:
                 rec_map[r.date] = {'value': r.value or 0}
         if h.kind == 'numeric' and h.allow_multi:
@@ -483,8 +479,6 @@ def get_habit_values():
         return jsonify({'value': None})
     if record.habit.kind == 'numeric':
         return jsonify({'value': record.value})
-    elif record.habit.kind == 'metrics':
-        return jsonify({'time_min': record.time_min, 'distance_km': record.distance_km})
     elif record.habit.kind == 'checkbox':
         return jsonify({'done': bool(record.done)})
     else:
@@ -524,23 +518,6 @@ def api_toggle():
         rec.done = not rec.done
     db.session.commit(); return jsonify({'ok': True})
 
-@app.post('/api/metrics')
-@login_required
-def api_metrics():
-    data = request.json or {}
-    hid = data.get('id'); day = data.get('date')
-    metrics = data.get('metrics', {})
-    h = Habit.query.filter_by(id=hid, user_id=current_user.id).first_or_404()
-    if h.kind != 'metrics':
-        return jsonify({'error': 'habit is not metrics type'}), 400
-    time_min = float(metrics.get('timeMin') or 0)
-    distance_km = float(metrics.get('distanceKm') or 0)
-    done = (time_min > 0) or (distance_km > 0)
-    rec = Record.query.filter_by(habit_id=h.id, date=day).first()
-    if not rec:
-        rec = Record(habit_id=h.id, date=day); db.session.add(rec)
-    rec.done = done; rec.time_min = time_min; rec.distance_km = distance_km
-    db.session.commit(); return jsonify({'ok': True})
 
 @app.post('/api/clear')
 @login_required
@@ -649,8 +626,6 @@ def api_reports():
                     'habit': h.name,
                     'kind': h.kind,
                     'done': bool(r.done),
-                    'timeMin': r.time_min or 0,
-                    'distanceKm': r.distance_km or 0,
                     'tags': [t.name for t in h.tags]
                 }
                 habit_rows.append(row)
@@ -861,8 +836,6 @@ def export_csv():
                     'habit': h.name,
                     'kind': h.kind,
                     'done': bool(r.done),
-                    'timeMin': r.time_min or 0,
-                    'distanceKm': r.distance_km or 0,
                     'value': r.value or 0,
                     'unit': h.unit or '',
                     'text': '',

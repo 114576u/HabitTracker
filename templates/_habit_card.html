@@ -20,7 +20,9 @@
 
   <div class="habit-details" style="margin-top: 0.5rem; font-size: 0.95rem;">
     {% if habit.kind == 'numeric' %}
-      <p>Goal: {{ habit.daily_goal or "—" }} {{ habit.unit or "" }} ({{ habit.aggregation }})</p>
+      {% if habit.daily_goal %}
+        <p>Goal: {{ habit.daily_goal }} {{ habit.unit or "" }} ({{ habit.aggregation }})</p>
+      {% endif %}
       {% if habit.monthly_goal %}
         <p>Monthly goal: {{ habit.monthly_goal }}</p>
       {% endif %}
@@ -28,11 +30,7 @@
       {% if habit.monthly_goal %}
         <p>Monthly goal: {{ habit.monthly_goal }} check-ins</p>
       {% endif %}
-    {% elif habit.kind == 'metrics' %}
-      <p>Type: metrics</p>
-      {% if habit.monthly_goal %}
-        <p>Monthly goal: {{ habit.monthly_goal }}</p>
-      {% endif %}
     {% endif %}
   </div>
+
 </div>
