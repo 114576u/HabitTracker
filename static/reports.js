@@ -29,7 +29,8 @@ async function runReport(){
   gbody.innerHTML = '';
   for (const g of (data.goals||[])){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${g.habit}</td><td>${g.monthlyGoal}</td><td>${g.doneCount}</td><td>${g.percent}%</td>`;
+    const color = g.percent >= 75 ? 'green' : g.percent >= 25 ? 'orange' : 'red';
+    tr.innerHTML = `<td>${g.habit}</td><td>${g.monthlyGoal}</td><td>${g.doneCount}</td><td style="color:${color}">${g.percent}%</td>`;
     gbody.appendChild(tr);
   }
 
@@ -46,8 +47,6 @@ async function runReport(){
       <td>${row.type==='habit' ? (row.habit||'') : (row.text||'')}</td>
       <td>${row.type==='habit' ? (row.kind||'') : (row.category||'')}</td>
       <td>${row.type==='habit' ? (row.done?'✔':'') : (row.checked?'✔':'')}</td>
-      <td>${row.timeMin ?? ''}</td>
-      <td>${row.distanceKm ?? ''}</td>
       <td>${row.rating ?? ''}</td>
       <td>${tags}</td>
       <td>${row.link ? `<a href="${row.link}" target="_blank" rel="noopener">link</a>` : ''}</td>

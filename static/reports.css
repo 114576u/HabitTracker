@@ -1,0 +1,30 @@
+table#goalsTable td,
+table#summaryTable td,
+table#repTable td {
+  padding: 6px 10px;
+  font-size: 0.95rem;
+}
+
+table#repTable td:nth-child(5), /* Done */
+table#repTable td:nth-child(6) /* Rating */ {
+  text-align: center;
+}
+
+.badge {
+  padding: 3px 6px;
+  font-size: 0.9rem;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+}
+
+table tr:nth-child(even) {
+  background-color: #f3f3f3;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table td, table th {
+  border: 1px solid #ccc;
+}

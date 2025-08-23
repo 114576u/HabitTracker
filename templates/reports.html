@@ -49,10 +49,8 @@
           <th>Type</th>
           <th>Date</th>
           <th>Habit / Title</th>
-          <th>Kind / Category</th>
+          <th>Kind</th>
           <th>Done</th>
-          <th>Time (min)</th>
-          <th>Distance (km)</th>
           <th>Rating</th>
           <th>Tags</th>
           <th>Link</th>
@@ -62,6 +60,7 @@
     </table>
   </div>
 
+  <link rel="stylesheet" href="{{ url_for('static', filename='reports.css') }}">
   <script src="{{ url_for('static', filename='reports.js') }}"></script>
   <script>initReports();</script>
 {% endblock %}
