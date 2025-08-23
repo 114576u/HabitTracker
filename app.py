@@ -929,10 +929,33 @@ def export_csv():
     return Response(csv_bytes, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename={filename}'})
 
 
-@app.route('/habits', methods=['GET'])
+# @app.route('/habits', methods=['GET'])
+# @login_required
+# def habits_page():
+    #     habits = get_all_habits()  # Replace with your actual DB access function
+#     return render_template('habits.html', habits=habits)
+#     # return render_template('habits.html')
+
+@app.route('/habits')
 @login_required
-def habits_page():
-    return render_template('habits.html')
+def habits():
+    habits = get_all_habits()
+    return render_template("habits.html", habits=habits)
+
+
+import sqlite3
+
+def get_db_connection():
+    conn = sqlite3.connect('C:/Users/josep/PycharmProjects/HabitTracker/instance/app.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def get_all_habits():
+    conn = get_db_connection()
+    habits = conn.execute('SELECT * FROM habit').fetchall()
+    conn.close()
+    return [dict(row) for row in habits]
+
 
 
 # ------------- Startup -------------

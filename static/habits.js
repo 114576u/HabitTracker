@@ -125,23 +125,25 @@ function appendHabitCard(habit) {
   card.classList.add('card', 'habit-card');
 
   card.innerHTML = `
-    <h5>${habit.name}</h5>
-    <p>Type: ${habit.kind}</p>
-    ${habit.tags ? `<p>Tags: ${habit.tags}</p>` : ''}
-    ${habit.monthlyGoal ? `<p>Monthly goal: ${habit.monthlyGoal}</p>` : ''}
-    <div style="width: 1.5rem; height: 1.5rem; background: ${habit.color}; border-radius: 50%; margin-top: 0.5rem"></div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h5 style="margin: 0; font-size: 1.1rem;">${habit.name}</h5>
+      <div style="width: 1.25rem; height: 1.25rem; background: ${habit.color}; border-radius: 50%;"></div>
+    </div>
+    <div style="margin-top: 0.5rem;">
+      <p style="margin: 0.25rem 0;"><strong>Type:</strong> ${habit.kind}</p>
+      ${habit.tags?.length ? `<p style="margin: 0.25rem 0;"><strong>Tags:</strong> ${habit.tags.join(', ')}</p>` : ''}
+      ${habit.monthlyGoal ? `<p style="margin: 0.25rem 0;"><strong>Monthly goal:</strong> ${habit.monthlyGoal}</p>` : ''}
+    </div>
   `;
 
+  card.style.marginBottom = '1rem';
+  card.style.padding = '1rem';
+  card.style.borderRadius = '0.5rem';
   card.style.transition = "background 0.5s";
   card.style.background = "#e0ffe0";
   setTimeout(() => {
     card.style.background = "";
   }, 1000);
-
-  const noHabitsMsg = document.querySelector('p');
-  if (noHabitsMsg?.textContent.includes('No habits yet')) {
-    noHabitsMsg.remove();
-  }
 
   container.appendChild(card);
 }
