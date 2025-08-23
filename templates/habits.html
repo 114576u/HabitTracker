@@ -18,6 +18,26 @@
     <input id="hColor" type="color" value="#8c88fc" style="height: 2.2rem;">
   </div>
 
+
+  <div id="hNumeric" style="display:none; margin-top: 1rem; text-align: right;">
+    <div class="form-row">
+      <input id="hUnit" type="text" placeholder="Unit (e.g., pages, L)">
+      <select id="hAggregation">
+        <option value="sum">Sum</option>
+        <option value="avg">Average</option>
+        <option value="max">Max</option>
+        <option value="min">Min</option>
+      </select>
+      <input id="hDailyGoal" type="number" step="any" placeholder="Daily goal (optional)">
+      <label>
+        <input type="checkbox" id="hAllowMulti">
+        Allow multiple entries per day
+      </label>
+    </div>
+  </div>
+
+
+
   <div class="habit-type-select">
     <label class="habit-type-card">
       <input type="radio" name="hKind" value="checkbox" checked>
@@ -54,7 +74,7 @@
 <!-- Existing Habits -->
 {% if habits %}
 <h4>Your habits</h4>
-<div class="habit-list">
+<div class="habit-list" id="habit-list">
   {% for habit in habits %}
   <div class="card habit-card">
     {% include '_habit_card.html' %}
@@ -62,28 +82,9 @@
   {% endfor %}
 </div>
 {% else %}
+<div id="habit-list"></div>
 <p>No habits yet. Start by creating one above!</p>
 {% endif %}
-
-
-<div id="hNumeric" style="display:none; margin-top: 1rem;">
-  <div class="form-row">
-    <input id="hUnit" type="text" placeholder="Unit (e.g., pages, L)">
-    <select id="hAggregation">
-      <option value="sum">Sum</option>
-      <option value="avg">Average</option>
-      <option value="max">Max</option>
-      <option value="min">Min</option>
-    </select>
-    <input id="hDailyGoal" type="number" step="any" placeholder="Daily goal (optional)">
-    <label>
-      <input type="checkbox" id="hAllowMulti">
-      Allow multiple entries per day
-    </label>
-  </div>
-</div>
-
-
 
 <script src="{{ url_for('static', filename='habits.js') }}"></script>
 

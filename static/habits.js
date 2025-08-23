@@ -116,65 +116,9 @@ function renderHabits() {
   });
 }
 
-// Create habit
-document.getElementById('btnCreateHabit').addEventListener('click', async () => {
-  const name = document.getElementById('hName').value.trim();
-  const tags = document.getElementById('hTags').value.trim();
-  const monthlyGoal = document.getElementById('hMonthlyGoal').value.trim();
-  const color = document.getElementById('hColor').value;
-  const kind = document.querySelector('input[name="hKind"]:checked').value;
-
-  if (!name) {
-    alert("Please enter a habit name.");
-    return;
-  }
-
-
-const dailyGoal = document.getElementById('hDailyGoal').value.trim();
-const unit = document.getElementById('hUnit').value.trim();
-const aggregation = document.getElementById('hAggregation').value;
-const allowMulti = document.getElementById('hAllowMulti').checked;
-
-
-const habitData = {
-  name,
-  kind,
-  color,
-  monthlyGoal: monthlyGoal || null,
-  dailyGoal: dailyGoal || null,
-  unit: unit || null,
-  aggregation: aggregation || 'sum',
-  allowMulti: allowMulti || false,
-  tags: parseTags(tags)  // make sure this is always an array
-};
-
-
-  try {
-    const res = await fetch('/api/habits/add', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(habitData)
-    });
-
-    if (res.ok) {
-      const newHabit = await res.json(); // assuming your API returns the created habit
-      appendHabitCard(newHabit); // 👈 render it
-      clearFormInputs();
-    } else {
-      const errorText = await res.text();
-      alert("Error creating habit: " + errorText);
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Unexpected error: " + err.message);
-  }
-});
-
 
 function appendHabitCard(habit) {
-  const container = document.querySelector('.habit-list');
+  const container = document.getElementById('habit-list');
   if (!container) return;
 
   const card = document.createElement('div');
@@ -194,8 +138,82 @@ function appendHabitCard(habit) {
     card.style.background = "";
   }, 1000);
 
+  const noHabitsMsg = document.querySelector('p');
+  if (noHabitsMsg?.textContent.includes('No habits yet')) {
+    noHabitsMsg.remove();
+  }
+
   container.appendChild(card);
 }
+
+
+
+
+// Create habit
+document.getElementById('btnCreateHabit').addEventListener('click', async () => {
+  const name = document.getElementById('hName').value.trim();
+  const tags = document.getElementById('hTags').value.trim();
+  const monthlyGoal = document.getElementById('hMonthlyGoal').value.trim();
+  const color = document.getElementById('hColor').value;
+  const kind = document.querySelector('input[name="hKind"]:checked').value;
+
+  if (!name) {
+    alert("Please enter a habit name.");
+    return;
+  }
+
+  const dailyGoal = document.getElementById('hDailyGoal').value.trim();
+  const unit = document.getElementById('hUnit').value.trim();
+  const aggregation = document.getElementById('hAggregation').value;
+  const allowMulti = document.getElementById('hAllowMulti').checked;
+
+  const habitData = {
+    name,
+    kind,
+    color,
+    monthlyGoal: monthlyGoal || null,
+    dailyGoal: dailyGoal || null,
+    unit: unit || null,
+    aggregation: aggregation || 'sum',
+    allowMulti: allowMulti || false,
+    tags: parseTags(tags)  // make sure this is always an array
+  };
+
+  try {
+    const res = await fetch('/api/habits/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(habitData)
+    });
+
+    if (res.ok) {
+      const result = await res.json(); // ✅ FIXED: properly named result
+      // ✅ Merge local habit data with the returned ID and append to UI
+      //appendHabitCard({
+      //  ...habitData,
+      //  id: result.id || null
+      //});
+
+      const newHabit = {
+        ...habitData,
+        id: result.id
+      };
+      appendHabitCard(newHabit);
+      clearFormInputs();
+
+    } else {
+      const errorText = await res.text();
+      alert("Error creating habit: " + errorText);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Unexpected error: " + err.message);
+  }
+});
+
+
 
 
 function clearFormInputs() {
