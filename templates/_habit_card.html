@@ -1,13 +1,35 @@
-<!-- templates/_habit_card.html -->
-<div class="habit-title">
-  <strong>{{ habit.name }}</strong>
-</div>
-<div class="habit-meta">
+<div class="habit-card-container" style="border-left: 8px solid {{ habit.color }};">
+  <div class="habit-header">
+    <strong>{{ habit.name }}</strong>
+
+    <div class="habit-actions">
+      <button class="btn btn-sm edit-btn" data-id="{{ habit.id }}">🖉</button>
+      <button class="btn btn-sm delete-btn" data-id="{{ habit.id }}">🗑</button>
+    </div>
+  </div>
+
   {% if habit.tags %}
-    <p>Tags: {{ habit.tags }}</p>
+    <div class="habit-tags">
+      {% for tag in habit.tags.split(',') %}
+        <span class="tag">{{ tag.strip() }}</span>
+      {% endfor %}
+    </div>
   {% endif %}
-  {% if habit.monthly_goal %}
-    <p>Monthly goal: {{ habit.monthly_goal }}</p>
+
+  {% if habit.kind == 'numeric' %}
+    <div class="habit-details">
+      <p>Goal: {{ habit.daily_goal or "—" }} {{ habit.unit or "" }} ({{ habit.aggregation }})</p>
+      {% if habit.monthly_goal %}<p>Monthly goal: {{ habit.monthly_goal }}</p>{% endif %}
+    </div>
+  {% elif habit.kind == 'checkbox' %}
+    {% if habit.monthly_goal %}
+      <p>Monthly goal: {{ habit.monthly_goal }} check-ins</p>
+    {% endif %}
+  {% elif habit.kind == 'metrics' %}
+    <p>Type: metrics</p>
+    {% if habit.monthly_goal %}
+      <p>Monthly goal: {{ habit.monthly_goal }}</p>
+    {% endif %}
   {% endif %}
-  <p>Type: {{ habit.kind }}</p>
 </div>
+
