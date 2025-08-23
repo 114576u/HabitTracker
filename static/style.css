@@ -107,3 +107,55 @@ label{color:var(--muted)}
 .hidden{display:none}
 .center{justify-content:center}
 .right{justify-content:flex-end}
+
+
+/* --- Habit Card improvements (only for /habits page) --- */
+#habitList .card {
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+#habitList .card .badge {
+  margin: 4px 6px 4px 0;
+}
+
+#habitList .card input[type="text"],
+#habitList .card input[type="number"],
+#habitList .card select {
+  margin-top: 6px;
+  margin-bottom: 10px;
+  min-width: 200px;
+}
+
+#habitList .card button {
+  margin-top: 4px;
+  margin-right: 6px;
+}
+
+#habitList .card .row.wrap {
+  gap: 12px;
+  margin-top: 10px;
+}
+
+#habitList .card .actions {
+  margin-top: 16px;
+}
+
+
+/* Habit cards in 2-column grid */
+#habitList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+#habitList .card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media screen and (min-width: 768px) {
+  #habitList {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -9,69 +9,108 @@ async function fetchHabits(){
   renderHabits();
 }
 
-function renderHabits(){
+function renderHabits() {
   const wrap = document.getElementById('habitList');
-  if (!state.habits.length){ wrap.innerHTML = '<div class="muted">No habits yet.</div>'; return; }
+  if (!state.habits.length) {
+    wrap.innerHTML = '<div class="muted">No habits yet.</div>';
+    return;
+  }
+
   wrap.innerHTML = state.habits.map(h => `
     <div class="card" data-id="${h.id}">
-      <div class="card-header">
-        <div class="badge name" style="background:${h.color}">${h.name}</div>
-        <div class="muted">(${h.kind})</div>
-        <div class="spacer"></div>
-        <div class="muted">${h.active===false?'Inactive':'Active'}</div>
+      <div class="card-header row between wrap">
+        <div class="row wrap">
+          <div class="badge name" style="background:${h.color}">${h.name}</div>
+          <div class="muted ml-sm">(${h.kind})</div>
+        </div>
+        <div class="muted">${h.active === false ? 'Inactive' : 'Active'}</div>
       </div>
+
       <div class="card-body">
-        <div class="mt">${(h.tags||[]).map(t=>`<span class="badge">${t}</span>`).join(' ')}</div>
-        <div class="row mt wrap">
-          <input class="grow" type="text" placeholder="edit tags (comma separated)" value="${(h.tags||[]).join(', ')}" data-habit-tags="${h.id}">
+        ${(h.tags || []).length > 0 ? `
+          <div class="row wrap mt-sm mb-sm">
+            ${h.tags.map(t => `<span class="badge">${t}</span>`).join(' ')}
+          </div>` : ''
+        }
+
+        <div class="row wrap gap-sm mb-sm">
+          <input class="grow" type="text" placeholder="edit tags (comma separated)" value="${(h.tags || []).join(', ')}" data-habit-tags="${h.id}">
           <button class="btn action" data-act="saveTags" data-id="${h.id}">Save tags</button>
-          <input style="max-width:180px" type="number" min="0" placeholder="monthly goal" value="${h.monthlyGoal ?? ''}" data-habit-goal="${h.id}">
+        </div>
+
+        <div class="row wrap gap-sm mb-sm">
+          <input type="number" style="max-width:180px" min="0" placeholder="monthly goal" value="${h.monthlyGoal ?? ''}" data-habit-goal="${h.id}">
           <button class="btn action" data-act="saveGoal" data-id="${h.id}">Save goal</button>
         </div>
-        ${h.kind==='numeric' ? `
-        <div class="row mt wrap">
-          <div class="muted">Unit: ${h.unit||'—'} • Agg: ${h.aggregation||'sum'} • Daily goal: ${h.dailyGoal??'—'} • ${h.allowMulti?'Multi-entry':'Single value'}</div>
-        </div>` : ''}
-        <div class="actions">
-          <button class="btn" data-act="toggleActive" data-id="${h.id}">${h.active===false?'Enable':'Disable'}</button>
+
+        ${h.kind === 'numeric' ? `
+          <div class="muted mb-sm">
+            Unit: <strong>${h.unit || '—'}</strong> •
+            Agg: <strong>${h.aggregation || 'sum'}</strong> •
+            Daily goal: <strong>${h.dailyGoal ?? '—'}</strong> •
+            ${h.allowMulti ? 'Multi-entry' : 'Single value'}
+          </div>
+        ` : ''}
+
+        <div class="row gap-sm mt-sm">
+          <button class="btn" data-act="toggleActive" data-id="${h.id}">${h.active === false ? 'Enable' : 'Disable'}</button>
           <button class="btn danger" data-act="delete" data-id="${h.id}">Delete</button>
         </div>
       </div>
     </div>
   `).join('');
 
-  // bind actions
+  // Action bindings (unchanged)
   wrap.querySelectorAll('[data-act="saveTags"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
       const input = document.querySelector(`[data-habit-tags="${id}"]`);
       const tags = parseTags(input.value);
-      await fetch('/api/habits/tags', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, tags }) });
+      await fetch('/api/habits/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, tags })
+      });
       fetchHabits();
     });
   });
+
   wrap.querySelectorAll('[data-act="saveGoal"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
       const input = document.querySelector(`[data-habit-goal="${id}"]`);
       const monthlyGoal = input.value === '' ? null : Number(input.value);
-      await fetch('/api/habits/goal', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, monthlyGoal }) });
+      await fetch('/api/habits/goal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, monthlyGoal })
+      });
       fetchHabits();
     });
   });
+
   wrap.querySelectorAll('[data-act="toggleActive"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
-      const h = state.habits.find(x=>x.id==id);
+      const h = state.habits.find(x => x.id == id);
       const active = !(h && h.active !== false);
-      await fetch('/api/habits/active', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, active }) });
+      await fetch('/api/habits/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, active })
+      });
       fetchHabits();
     });
   });
+
   wrap.querySelectorAll('[data-act="delete"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Delete this habit?')) return;
-      await fetch('/api/habits/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: btn.dataset.id }) });
+      await fetch('/api/habits/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: btn.dataset.id })
+      });
       fetchHabits();
     });
   });
