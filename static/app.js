@@ -13,16 +13,26 @@ const state = {
   currentHabitAction: null
 };
 
-async function setSelectedDay(dayStr){
+async function setSelectedDay(dayStr) {
   state.selectedDay = dayStr;
-  const sd = el('selectedDay'); if(sd) sd.value = dayStr;
+  const sd = el('selectedDay');
+  if (sd) sd.value = dayStr;
   el('selectedDate').textContent = new Date(dayStr + 'T00:00:00').toDateString();
-  await fetchData();                    // <-- ✅ Ensure state.activity is updated
-  populateHabitPicker();               // ✅ Ensure dropdown is filled
-  await refreshDay();
-  renderSelectedHabitCard();
+  await fetchData();                    // ✅ Updates state.activity (e.g. records per date)
+  populateHabitPicker();               // ✅ Update dropdown
+  await refreshDay();                  // ✅ Load journals and habit data
+  renderSelectedHabitCard();           // ✅ Show selected habit if any
   renderCalendar();
-  renderHabits(displayedHabits);
+  // ✅ ADD THIS:
+  // await loadHabits();                  // Ensure habits are freshly loaded
+  // await fetchData();
+  renderHabits(state.habits);          // Show habit cards for this date
+  // ✅ (Optional) auto-select and show detailed card for first habit with a record
+  const existing = state.habits.find(h => h.records?.[state.selectedDay]);
+  if (existing) {
+    state.selectedHabitId = existing.id;
+    renderSelectedHabitCard();         // show full card
+  }
 }
 
 async function fetchData(){
@@ -126,10 +136,12 @@ function renderHabits(habits) {
     container.innerHTML = '';
 
     habits.forEach(habit => {
+        const rec = habit.records?.[state.selectedDay];
+        if (!rec || (typeof rec === 'object' && !('value' in rec))) return;  // 🛑 Skip if no valid record
+
         const card = document.createElement('div');
         card.className = 'card';
 
-        // Habit name and type
         const title = document.createElement('div');
         title.className = 'row wrap';
         title.innerHTML = `<span class="pill" style="background-color:${habit.color}">${habit.name}</span>
@@ -137,48 +149,23 @@ function renderHabits(habits) {
         <span class="muted">${habit.kind}</span>`;
         card.appendChild(title);
 
-        // Tags
-        if (habit.tags.length > 0) {
-            const tags = document.createElement('div');
-            habit.tags.forEach(t => {
-                const tag = document.createElement('span');
-                tag.className = 'tag';
-                tag.textContent = t;
-                tags.appendChild(tag);
-            });
-            card.appendChild(tags);
-        }
-
-        // Habit record for selected day
-        const rec = habit.records?.[state.selectedDay];
-
-        if (habit.kind === 'numeric') {
-            if (rec && typeof rec === 'object' && 'value' in rec) {
-                const show = document.createElement('p');
-                show.textContent = `Value: ${rec.value}`;
-                card.appendChild(show);
-            }
+        if (habit.kind === 'numeric' && 'value' in rec) {
+            const show = document.createElement('p');
+            show.textContent = `Value: ${rec.value}`;
+            card.appendChild(show);
 
             const editBtn = document.createElement('button');
             editBtn.className = 'btn';
             editBtn.textContent = 'Edit value';
-            editBtn.onclick = () => openNumeric(habit.id, habit.name, rec?.value);
+            editBtn.onclick = () => openNumeric(habit.id, habit.name, rec.value);
             card.appendChild(editBtn);
 
-            if (rec && typeof rec === 'object' && 'value' in rec) {
-                const delBtn = document.createElement('button');
-                delBtn.className = 'btn danger';
-                delBtn.textContent = 'Delete value';
-                delBtn.onclick = () => deleteHabitValue(habit.id);
-                card.appendChild(delBtn);
-            }
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn danger';
+            delBtn.textContent = 'Delete value';
+            delBtn.onclick = () => deleteHabitValue(habit.id);
+            card.appendChild(delBtn);
         }
-
-        const deleteHabitBtn = document.createElement('button');
-        deleteHabitBtn.className = 'btn danger';
-        deleteHabitBtn.textContent = 'Delete habit';
-        deleteHabitBtn.onclick = () => deleteHabit(habit.id);
-        card.appendChild(deleteHabitBtn);
 
         container.appendChild(card);
     });
