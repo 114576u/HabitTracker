@@ -389,6 +389,7 @@ def api_numeric_clear():
 @login_required
 def api_add_habit():
     data = request.json or {}
+    print("Received habit data:", data)  # ← Add this line
     name = (data.get('name') or '').strip()
     kind = data.get('kind') or 'checkbox'
     color = data.get('color') or '#6366f1'
@@ -401,7 +402,8 @@ def api_add_habit():
     if not name:
         return jsonify({'error': 'name required'}), 400
     unit = (data.get('unit') or '').strip() or None
-    aggregation = (data.get('aggregation') or 'sum').strip()
+    aggregation_raw = data.get('aggregation')
+    aggregation = aggregation_raw.strip() if aggregation_raw and isinstance(aggregation_raw, str) else 'sum'
     daily_goal = data.get('dailyGoal')
     try:
         daily_goal = float(daily_goal) if daily_goal not in (None, '') else None
@@ -409,13 +411,27 @@ def api_add_habit():
         daily_goal = None
     allow_multi = bool(data.get('allowMulti', False))
 
-    h = Habit(user_id=current_user.id, name=name, kind=kind, color=color, monthly_goal=monthly_goal,
-              unit=unit if kind=='numeric' else None,
-              aggregation=aggregation if kind=='numeric' else None,
-              daily_goal=daily_goal if kind=='numeric' else None,
-              allow_multi=allow_multi if kind=='numeric' else False)
-    h.tags = get_or_create_tags(current_user.id, tags_in)
-    db.session.add(h); db.session.commit()
+    print("💡 Creating habit with values:")
+    print("name =", name)
+    print("kind =", kind)
+    print("unit =", unit)
+    print("aggregation =", aggregation)
+    print("monthly_goal =", monthly_goal)
+    print("daily_goal =", daily_goal)
+    print("allow_multi =", allow_multi)
+
+    try:
+        h = Habit(user_id=current_user.id, name=name, kind=kind, color=color, monthly_goal=monthly_goal,
+                  unit=unit if kind=='numeric' else None,
+                  aggregation=aggregation if kind=='numeric' else None,
+                  daily_goal=daily_goal if kind=='numeric' else None,
+                  allow_multi=allow_multi if kind=='numeric' else False)
+        h.tags = get_or_create_tags(current_user.id, tags_in)
+        db.session.add(h)
+        db.session.commit()
+    except Exception as e:
+        print("  failed to create habit:", e)
+        return jsonify(({'error': str(e)})), 500
     return jsonify({'ok': True, 'id': h.id})
 
 @app.post('/api/habits/tags')

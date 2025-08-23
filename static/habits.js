@@ -119,28 +119,95 @@ function renderHabits() {
 // Create habit
 document.getElementById('btnCreateHabit').addEventListener('click', async () => {
   const name = document.getElementById('hName').value.trim();
-  const color = document.getElementById('hColor').value || '#6366f1';
-  const kind = [...document.getElementsByName('hKind')].find(r => r.checked)?.value || 'checkbox';
-  const tags = (document.getElementById('hTags').value||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const monthlyGoalStr = document.getElementById('hMonthlyGoal').value;
-  const monthlyGoal = monthlyGoalStr === '' ? null : Number(monthlyGoalStr);
-  const payload = { name, color, kind, tags, monthlyGoal };
-  if (kind==='numeric'){
-    payload.unit = document.getElementById('hUnit').value.trim();
-    payload.aggregation = document.getElementById('hAgg').value;
-    payload.allowMulti = document.getElementById('hAllowMulti').checked;
-    const dg = document.getElementById('hDailyGoal').value;
-    payload.dailyGoal = dg === '' ? null : Number(dg);
+  const tags = document.getElementById('hTags').value.trim();
+  const monthlyGoal = document.getElementById('hMonthlyGoal').value.trim();
+  const color = document.getElementById('hColor').value;
+  const kind = document.querySelector('input[name="hKind"]:checked').value;
+
+  if (!name) {
+    alert("Please enter a habit name.");
+    return;
   }
-  if (!name) return;
-  await fetch('/api/habits/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-  // Clear
-  document.getElementById('hName').value=''; document.getElementById('hTags').value=''; document.getElementById('hMonthlyGoal').value='';
-  const elUnit=document.getElementById('hUnit'); if (elUnit) elUnit.value='';
-  const elDG=document.getElementById('hDailyGoal'); if (elDG) elDG.value='';
-  const elAM=document.getElementById('hAllowMulti'); if (elAM) elAM.checked=false;
-  fetchHabits();
+
+
+const dailyGoal = document.getElementById('hDailyGoal').value.trim();
+const unit = document.getElementById('hUnit').value.trim();
+const aggregation = document.getElementById('hAggregation').value;
+const allowMulti = document.getElementById('hAllowMulti').checked;
+
+
+const habitData = {
+  name,
+  kind,
+  color,
+  monthlyGoal: monthlyGoal || null,
+  dailyGoal: dailyGoal || null,
+  unit: unit || null,
+  aggregation: aggregation || 'sum',
+  allowMulti: allowMulti || false,
+  tags: parseTags(tags)  // make sure this is always an array
+};
+
+
+  try {
+    const res = await fetch('/api/habits/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(habitData)
+    });
+
+    if (res.ok) {
+      const newHabit = await res.json(); // assuming your API returns the created habit
+      appendHabitCard(newHabit); // 👈 render it
+      clearFormInputs();
+    } else {
+      const errorText = await res.text();
+      alert("Error creating habit: " + errorText);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Unexpected error: " + err.message);
+  }
 });
+
+
+function appendHabitCard(habit) {
+  const container = document.querySelector('.habit-list');
+  if (!container) return;
+
+  const card = document.createElement('div');
+  card.classList.add('card', 'habit-card');
+
+  card.innerHTML = `
+    <h5>${habit.name}</h5>
+    <p>Type: ${habit.kind}</p>
+    ${habit.tags ? `<p>Tags: ${habit.tags}</p>` : ''}
+    ${habit.monthlyGoal ? `<p>Monthly goal: ${habit.monthlyGoal}</p>` : ''}
+    <div style="width: 1.5rem; height: 1.5rem; background: ${habit.color}; border-radius: 50%; margin-top: 0.5rem"></div>
+  `;
+
+  card.style.transition = "background 0.5s";
+  card.style.background = "#e0ffe0";
+  setTimeout(() => {
+    card.style.background = "";
+  }, 1000);
+
+  container.appendChild(card);
+}
+
+
+function clearFormInputs() {
+  document.getElementById('hName').value = '';
+  document.getElementById('hTags').value = '';
+  document.getElementById('hMonthlyGoal').value = '';
+  document.getElementById('hColor').value = '#8c88fc';
+  document.querySelector('input[name="hKind"][value="checkbox"]').checked = true;
+}
+
+
+
 
 // Show/hide numeric opts
 [...document.getElementsByName('hKind')].forEach(r => r.addEventListener('change', () => {
