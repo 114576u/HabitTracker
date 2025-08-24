@@ -1,21 +1,49 @@
+# 🧠 Habit Tracker — Flask + SQLite + Login + Tags + Ratings + Calendar + Reports + Goals
 
-# Habit Tracker — Flask + SQLite + Login + Tags/Ratings + Reports + Monthly Goals + Calendar Activity
+A lightweight but powerful **Habit Tracker Web App** built using **Flask** and **SQLite**, with user login, habit tagging, progress reports, mood tracking, and calendar activity view.
 
-**New in this build**
-- Calendar highlights days with **any activity** (habit record or journal entry) using a light-blue background.
-- **Monthly goals per habit**: set on create and edit later; Reports show progress for the selected month.
-- Full auth + media journal (with tags & ratings), tag filtering, sortable reports.
+---
 
-## Run
+## 🚀 Features
+
+✅ **User Authentication**  
+Secure login and registration system per user session.
+
+✅ **Habit Logging with Tags**  
+Create daily habit entries and associate **tags** (e.g. `health`, `study`, `meditation`) for flexible tracking and reporting.
+
+✅ **Journal Entries with Media and Ratings**  
+Add optional **mood ratings** and **journal notes** to each habit entry.
+
+✅ **Calendar with Activity Highlights**  
+View a calendar where any day with activity (habit or journal) is marked. Easily track streaks and consistency.
+
+✅ **Monthly Goals per Habit**  
+Set and edit **monthly goals** for each habit. Progress is shown in reports.
+
+✅ **Reports Dashboard**  
+Dynamic reports with filtering:
+- By **week**, **month**, or **year**
+- Sorted by **date**, **habit**, **category**, or **rating**
+- Filterable by **tag**
+
+✅ **REST API Endpoints**  
+Programmatic access to activity data and reports.
+
+---
+
+## 🛠️ Installation & Run
+
 ```bash
+# Create a virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-# open http://127.0.0.1:5000
-```
+source .venv/bin/activate      # On Windows: .venv\Scripts\activate
 
-## Notes
-- Endpoint: `GET /api/activity?month=YYYY-MM` returns per-day activity counts for the calendar view.
-- Endpoint: `GET /api/reports` supports period (week|month|year), base start date, sort (date|habit|category|rating), and tag filter.
-- Habit creation accepts `monthlyGoal`; update via `POST /api/habits/goal`.
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the Flask app
+python app.py
+
+# Open in your browser
+http://127.0.0.1:5000
