@@ -39,6 +39,7 @@ async function runReport(){
   tbody.innerHTML = '';
   renderSummary(data);
   for (const row of data.rows){
+    if (row.type !== 'journal') continue;
     const tr = document.createElement('tr');
     const tags = (row.tags||[]).join(', ');
     tr.innerHTML = `

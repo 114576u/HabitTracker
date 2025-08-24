@@ -204,7 +204,8 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
-    logout_user(); return redirect(url_for('login'))
+    logout_user()
+    return redirect(url_for('login'))
 
 # -------- API: tags --------
 
@@ -698,20 +699,18 @@ def api_reports():
             for r in h.records:
                 if r.done:
                     habit_done_dates[h.id].add(r.date)
-        elif h.kind == 'metrics':
-            for r in h.records:
-                if r.done:
-                    habit_done_dates[h.id].add(r.date)
         elif h.kind == 'numeric':
             # non-multi: consider value>0
             for r in h.records:
                 if (r.value or 0) > 0:
                     habit_done_dates[h.id].add(r.date)
             # multi: any numeric entries on a day → done
-            rows = db.session.execute(text("SELECT date, SUM(value) as total FROM numeric_entry WHERE habit_id = :hid GROUP BY date"), {'hid': h.id}).mappings().all()
-            for row in rows:
-                if (row['total'] or 0) > 0:
-                    habit_done_dates[h.id].add(row['date'])
+            multi_rows = db.session.execute(text("SELECT date, SUM(value) as total FROM numeric_entry WHERE habit_id = :hid GROUP BY date"),
+                                            {'hid': h.id}
+                        ).mappings().all()
+            for r in multi_rows:
+                if (r['total'] or 0) > 0:
+                    habit_done_dates[h.id].add(r['date'])
 
     # For the selected period, compute totals by habit
     totals_map = defaultdict(lambda: {'habit': '', 'kind': '', 'color': '#6366f1', 'unit': None, 'count': 0, 'sum': 0.0})
@@ -722,7 +721,7 @@ def api_reports():
         totals_map[key]['color'] = h.color
         totals_map[key]['unit'] = h.unit
         # count of days done in [s,e]
-        if h.kind in ('checkbox','metrics','numeric'):
+        if h.kind in ('checkbox', 'numeric'):
             # For numeric, 'done' means value>0 (or any entries)
             # Use rows and records to compute both count and sum in period
             # Boolean count:
@@ -736,9 +735,10 @@ def api_reports():
                     if s <= r.date <= e:
                         sum_val += float(r.value or 0)
                 # add multi entries
-                rows = db.session.execute(text("SELECT SUM(value) as total FROM numeric_entry WHERE habit_id = :hid AND date >= :s AND date <= :e"),
-                                          {'hid': h.id, 's': s, 'e': e}).mappings().first()
-                sum_val += float(rows['total'] or 0)
+                total_result = db.session.execute(text("SELECT SUM(value) as total FROM numeric_entry WHERE habit_id = :hid AND date >= :s AND date <= :e"),
+                                          {'hid': h.id, 's': s, 'e': e}
+                                ).mappings().first()
+                sum_val += float(total_result['total'] or 0)
                 totals_map[key]['sum'] = round(sum_val, 2)
 
     for key, v in totals_map.items():
@@ -747,7 +747,9 @@ def api_reports():
         v['bestStreak'] = best
         period_totals.append(v)
     return jsonify({
-            'start': s, 'end': e, 'period': period,
+            'start': s,
+            'end': e,
+            'period': period,
             'count': len(rows),
             'rows': normalize_rows(rows),
             'summary': period_totals,
