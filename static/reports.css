@@ -28,3 +28,14 @@ table {
 table td, table th {
   border: 1px solid #ccc;
 }
+
+
+table#habitTable td {
+  padding: 6px 10px;
+  font-size: 0.95rem;
+}
+
+table#habitTable td:nth-child(5) {
+  font-weight: bold;
+  text-align: right;
+}

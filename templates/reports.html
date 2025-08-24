@@ -15,7 +15,6 @@
       <select id="repSort">
         <option value="date">Date</option>
         <option value="habit">Habit</option>
-        <option value="category">Category</option>
         <option value="rating">Rating</option>
       </select>
       <label>Filter by tag</label>
@@ -28,20 +27,15 @@
   <div id="repMeta" class="mt muted"></div>
 
   <div class="mt">
-    <h3 class="subtitle">Monthly goals (<span id="goalsMonth"></span>)</h3>
-    <table id="goalsTable">
-      <thead><tr><th>Habit</th><th>Goal</th><th>Done</th><th>Progress</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div class="mt">
-    <h3 class="subtitle">Summary & Streaks</h3>
-    <table id="summaryTable">
+    <h3 class="subtitle">Habit Summary (<span id="goalsMonth"></span>)</h3>
+    <table id="habitTable">
       <thead>
         <tr>
           <th>Habit</th>
           <th>Kind</th>
+          <th>Goal</th>
+          <th>Done (month)</th>
+          <th>Progress</th>
           <th>Days done</th>
           <th>Total (numeric)</th>
           <th>Unit</th>
@@ -52,6 +46,7 @@
       <tbody></tbody>
     </table>
   </div>
+
 
   <div class="mt">
     <h3 class="subtitle">Journal Entries</h3>

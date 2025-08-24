@@ -1,18 +1,23 @@
-function ymd(d){ return d.toISOString().slice(0,10); }
+function ymd(d) {
+  return d.toISOString().slice(0, 10);
+}
 
-async function initReports(){
+async function initReports() {
   const today = new Date();
   const start = ymd(today);
   document.getElementById('repStart').value = start;
   runReport();
 }
 
-async function runReport(){
+async function runReport() {
   const period = document.getElementById('repPeriod').value;
   const start = document.getElementById('repStart').value;
   const sort = document.getElementById('repSort').value;
   const tag = document.getElementById('repTag').value.trim();
   const url = new URL('/api/reports', location.origin);
+
+  const sortOption = sort.toLowerCase();
+
   url.searchParams.set('period', period);
   url.searchParams.set('start', start);
   url.searchParams.set('sort', sort);
@@ -23,31 +28,95 @@ async function runReport(){
 
   document.getElementById('repMeta').textContent = `Showing ${data.count} rows • ${data.start} → ${data.end}`;
 
-  // Goals table
+  // Unified Habit Table
   document.getElementById('goalsMonth').textContent = data.goalsMonth || '';
-  const gbody = document.querySelector('#goalsTable tbody');
-  gbody.innerHTML = '';
-  for (const g of (data.goals||[])){
-    const tr = document.createElement('tr');
-    const color = g.percent >= 75 ? 'green' : g.percent >= 25 ? 'orange' : 'red';
-    tr.innerHTML = `<td>${g.habit}</td><td>${g.monthlyGoal}</td><td>${g.doneCount}</td><td style="color:${color}">${g.percent}%</td>`;
-    gbody.appendChild(tr);
+  const merged = {};
+
+  // Load summary data
+  for (const row of (data.summary || [])) {
+    merged[row.habit] = {
+      habit: row.habit,
+      kind: row.kind,
+      color: row.color,
+      unit: row.unit,
+      count: row.count,
+      sum: row.sum,
+      currentStreak: row.currentStreak,
+      bestStreak: row.bestStreak,
+      goal: '',
+      doneCount: '',
+      percent: ''
+    };
   }
 
-  // Rows table
+  // Load goals into merged map
+  for (const g of (data.goals || [])) {
+    if (!merged[g.habit]) {
+      merged[g.habit] = {
+        habit: g.habit,
+        kind: '',
+        color: '#ccc',
+        unit: '',
+        count: 0,
+        sum: 0,
+        currentStreak: 0,
+        bestStreak: 0
+      };
+    }
+    merged[g.habit].goal = g.monthlyGoal;
+    merged[g.habit].doneCount = g.doneCount;
+    merged[g.habit].percent = g.percent;
+  }
+
+  // Render unified habit table
+  const hbody = document.querySelector('#habitTable tbody');
+  hbody.innerHTML = '';
+
+  const sortedKeys = Object.keys(merged).sort((a, b) => {
+      if (sortOption === 'habit') {
+        return a.localeCompare(b);
+      }
+      if (sortOption === 'rating') {
+        const aRating = merged[a].percent || 0;
+        const bRating = merged[b].percent || 0;
+        return bRating - aRating;
+      }
+      return 0; // default to no sorting
+    });
+
+  //for (const key of Object.keys(merged).sort()) {
+  for (const key of sortedKeys) {
+    const r = merged[key];
+    const color = r.percent >= 75 ? 'green' : r.percent >= 25 ? 'orange' : (r.percent !== '' ? 'red' : '');
+    const progressText = r.percent !== '' ? `${r.percent}%` : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="badge" style="border-color:${r.color}">${r.habit}</span></td>
+      <td>${r.kind}</td>
+      <td>${r.goal || ''}</td>
+      <td>${r.doneCount || ''}</td>
+      <td style="color:${color}">${progressText}</td>
+      <td>${r.count}</td>
+      <td>${r.kind === 'numeric' ? r.sum : ''}</td>
+      <td>${r.kind === 'numeric' ? r.unit || '' : ''}</td>
+      <td>${r.currentStreak || 0}</td>
+      <td>${r.bestStreak || 0}</td>
+    `;
+    hbody.appendChild(tr);
+  }
+
+  // Journal Rows Table
   const tbody = document.querySelector('#repTable tbody');
   tbody.innerHTML = '';
-  renderSummary(data);
-  for (const row of data.rows){
+  for (const row of data.rows) {
     if (row.type !== 'journal') continue;
     const tr = document.createElement('tr');
-    const tags = (row.tags||[]).join(', ');
+    const tags = (row.tags || []).join(', ');
     tr.innerHTML = `
       <td>${row.type}</td>
-      <td>${row.date||''}</td>
-      <td>${row.type==='habit' ? (row.habit||'') : (row.text||'')}</td>
-      <td>${row.type==='habit' ? (row.kind||'') : (row.category||'')}</td>
-      <td>${row.type==='habit' ? (row.done?'✔':'') : (row.checked?'✔':'')}</td>
+      <td>${row.date || ''}</td>
+      <td>${row.text || ''}</td>
+      <td>${row.checked ? '✔' : ''}</td>
       <td>${row.rating ?? ''}</td>
       <td>${tags}</td>
       <td>${row.link ? `<a href="${row.link}" target="_blank" rel="noopener">link</a>` : ''}</td>
@@ -56,8 +125,8 @@ async function runReport(){
   }
 }
 
-// Render summary with streaks
-function renderSummary(data){
+// Legacy — no longer used (safe to remove or keep for now)
+function renderSummary(data) {
   const tbody = document.querySelector('#summaryTable tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -74,7 +143,6 @@ function renderSummary(data){
   });
 }
 
-
 document.getElementById('btnExportCsv')?.addEventListener('click', () => {
   const period = document.getElementById('periodSel')?.value || 'week';
   const start = document.getElementById('startDate')?.value || '';
@@ -84,7 +152,6 @@ document.getElementById('btnExportCsv')?.addEventListener('click', () => {
   const url = '/export/csv?' + params.toString();
   window.location.href = url;
 });
-
 
 function exportCSV() {
   const period = document.getElementById("repPeriod").value;
