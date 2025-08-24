@@ -28,6 +28,22 @@ async function runReport() {
 
   document.getElementById('repMeta').textContent = `Showing ${data.count} rows • ${data.start} → ${data.end}`;
 
+  if (tag) {
+    document.getElementById('repMeta').textContent += ` • Tag filter: "${tag}"`;
+  }
+
+  // Build a tag map per habit from data.rows
+  const habitTagMap = {};
+  for (const row of (data.rows || [])) {
+    if (row.type === 'habit' && row.habit) {
+      if (!habitTagMap[row.habit]) {
+        habitTagMap[row.habit] = row.tags || [];
+      }
+    }
+  }
+
+
+
   // Unified Habit Table
   document.getElementById('goalsMonth').textContent = data.goalsMonth || '';
   const merged = {};
@@ -45,7 +61,8 @@ async function runReport() {
       bestStreak: row.bestStreak,
       goal: '',
       doneCount: '',
-      percent: ''
+      percent: '',
+      tags: habitTagMap[row.habit] || []
     };
   }
 
@@ -101,6 +118,7 @@ async function runReport() {
       <td>${r.kind === 'numeric' ? r.unit || '' : ''}</td>
       <td>${r.currentStreak || 0}</td>
       <td>${r.bestStreak || 0}</td>
+      <td>${(r.tags || []).join(', ')}</td>
     `;
     hbody.appendChild(tr);
   }
@@ -116,6 +134,7 @@ async function runReport() {
       <td>${row.type}</td>
       <td>${row.date || ''}</td>
       <td>${row.text || ''}</td>
+      <td>${row.category || ''}</td>
       <td>${row.checked ? '✔' : ''}</td>
       <td>${row.rating ?? ''}</td>
       <td>${tags}</td>
