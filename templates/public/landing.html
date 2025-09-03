@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HabitTracker — Build habits that stick</title>
+    <meta name="description" content="HabitTracker helps you build habits that stick with streaks, gentle nudges, and insights that actually matter." />
+
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+            boxShadow: {
+              soft: '0 10px 30px rgba(2, 6, 23, .08)',
+            },
+            backgroundImage: {
+              'grid-light':
+                'linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px)',
+              'grid-dark':
+                'linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px)',
+            },
+          },
+        },
+        darkMode: 'class',
+      };
+    </script>
+
+    <!-- Favicon (simple emoji as placeholder) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>✅</text></svg>">
+
+    <style>
+      /* Gradient rings */
+      .ring-gradient {
+        position: absolute;
+        inset: -40% -10% auto -10%;
+        height: 480px;
+        filter: blur(60px);
+        background: conic-gradient(from 180deg at 50% 50%, rgba(59,130,246,.35), rgba(168,85,247,.35), rgba(59,130,246,.35));
+        opacity: .6;
+        pointer-events: none;
+      }
+      .ring-gradient.bottom { inset: auto -10% -40% -10%; }
+
+      /* Smooth reveal */
+      [data-reveal] { opacity: 0; transform: translateY(12px); transition: .6s ease; }
+      .reveal-in { opacity: 1 !important; transform: translateY(0) !important; }
+
+      /* Hide modal by default */
+      .modal-hidden { display: none; }
+    </style>
+  </head>
+
+  <body class="bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+    <!-- Top announcement bar -->
+    <div class="relative">
+      <div class="ring-gradient"></div>
+      <div class="ring-gradient bottom"></div>
+
+      <div class="relative z-10">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between py-3 text-sm">
+            <p class="hidden sm:block text-slate-600 dark:text-slate-300">
+              ✨ New: Weekly review & calendar sync are live.
+            </p>
+            <div class="ml-auto flex items-center gap-2">
+              <button id="themeToggle" class="rounded-full border border-slate-200 px-3 py-1 text-xs leading-6 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">
+                Toggle theme
+              </button>
+              <a href="#pricing" class="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:opacity-90 dark:bg-white dark:text-slate-900">
+                Save 25% on Pro
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <header class="sticky top-0 z-20 border-y border-transparent bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-950/70">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between py-4">
+              <a href="/" class="flex items-center gap-2">
+                <div class="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-tr from-blue-500 to-violet-500 text-white shadow-soft">✓</div>
+                <span class="font-display text-lg font-semibold tracking-tight">HabitTracker</span>
+              </a>
+
+              <nav class="hidden items-center gap-6 md:flex">
+                <a href="#features" class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Features</a>
+                <a href="#how" class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">How it works</a>
+                <a href="#testimonials" class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Love</a>
+                <a href="#pricing" class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Pricing</a>
+              </nav>
+
+              <div class="flex items-center gap-2">
+                <button id="openLogin" class="hidden rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50 md:inline-flex dark:border-slate-800 dark:hover:bg-slate-900">
+                  Log in
+                </button>
+                <a href="#signup" id="ctaTop" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-slate-900">Start free</a>
+                <button id="menuBtn" class="inline-flex items-center justify-center rounded-lg p-2 md:hidden" aria-label="Open menu">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Mobile menu -->
+            <div id="mobileMenu" class="hidden border-t border-slate-100 py-4 dark:border-slate-800">
+              <nav class="grid gap-3 text-sm">
+                <a href="#features" class="px-2 py-1">Features</a>
+                <a href="#how" class="px-2 py-1">How it works</a>
+                <a href="#testimonials" class="px-2 py-1">Love</a>
+                <a href="#pricing" class="px-2 py-1">Pricing</a>
+                <button id="openLoginMobile" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-2 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Log in</button>
+              </nav>
+            </div>
+          </div>
+        </header>
+
+        <!-- Hero -->
+        <section class="relative overflow-hidden">
+          <div class="mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 lg:px-8 lg:pb-24 lg:pt-28">
+            <div class="grid items-center gap-10 lg:grid-cols-2">
+              <div>
+                <h1 class="font-display text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl" data-reveal>
+                  Build habits that <span class="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">actually stick</span>
+                </h1>
+                <p class="mt-5 max-w-xl text-lg text-slate-600 dark:text-slate-300" data-reveal>
+                  HabitTracker keeps you consistent with delightful streaks, gentle nudges, and simple insights. No overwhelm — just momentum.
+                </p>
+                <div class="mt-6 flex flex-wrap items-center gap-3" data-reveal>
+                  <a href="#signup" class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-slate-900">Start free — no card</a>
+                  <button id="openLoginHero" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Log in</button>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Free plan • iOS & Android • Web</span>
+                </div>
+                <div class="mt-8 flex items-center gap-6 text-xs text-slate-500 dark:text-slate-400" data-reveal>
+                  <div class="flex items-center gap-2"><span>✅</span> Streaks that motivate</div>
+                  <div class="flex items-center gap-2"><span>🔔</span> Nudges that respect you</div>
+                  <div class="flex items-center gap-2"><span>📈</span> Insights you’ll actually use</div>
+                </div>
+              </div>
+
+              <!-- Product mockup -->
+              <div class="relative" aria-hidden="true">
+                <div class="pointer-events-none absolute -left-10 -top-10 h-56 w-56 rounded-full bg-gradient-to-tr from-blue-500/30 to-violet-500/30 blur-2xl"></div>
+                <div class="relative mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-3 shadow-soft dark:border-slate-800 dark:bg-slate-950" data-reveal>
+                  <div class="aspect-[4/3] w-full rounded-xl bg-slate-900/5 ring-1 ring-inset ring-slate-900/10 dark:bg-white/5 dark:ring-white/10 flex items-center justify-center">
+                    <!-- Simple dashboard SVG placeholder -->
+                    <svg width="92%" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" class="rounded-md">
+                      <rect x="0" y="0" width="800" height="600" rx="16" fill="currentColor" opacity="0.02" />
+                      <rect x="40" y="40" width="720" height="60" rx="12" fill="currentColor" opacity="0.08" />
+                      <rect x="40" y="120" width="360" height="200" rx="12" fill="currentColor" opacity="0.08" />
+                      <rect x="420" y="120" width="340" height="200" rx="12" fill="currentColor" opacity="0.08" />
+                      <rect x="40" y="340" width="720" height="60" rx="12" fill="currentColor" opacity="0.08" />
+                      <rect x="40" y="420" width="220" height="140" rx="12" fill="currentColor" opacity="0.08" />
+                      <rect x="280" y="420" width="220" height="140" rx="12" fill="currentColor" opacity="0.08" />
+                      <rect x="520" y="420" width="240" height="140" rx="12" fill="currentColor" opacity="0.08" />
+                    </svg>
+                  </div>
+                  <div class="mt-3 grid grid-cols-3 gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                    <div class="rounded-md border border-slate-200 p-2 dark:border-slate-800">Daily check-ins</div>
+                    <div class="rounded-md border border-slate-200 p-2 dark:border-slate-800">Smart reminders</div>
+                    <div class="rounded-md border border-slate-200 p-2 dark:border-slate-800">Calendar sync</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <section id="features" class="border-t border-slate-100 py-20 dark:border-slate-900">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-2xl text-center">
+          <h2 class="font-display text-3xl font-bold tracking-tight sm:text-4xl">Simple, motivating, respectful</h2>
+          <p class="mt-3 text-slate-600 dark:text-slate-300">We focus on the few features that make the biggest difference.</p>
+        </div>
+        <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <!-- Card -->
+          <article class="rounded-2xl border border-slate-200 p-6 shadow-soft dark:border-slate-800" data-reveal>
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">🔥</div>
+            <h3 class="font-semibold">Streaks that celebrate you</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">A satisfying streak view that motivates without shaming.</p>
+          </article>
+
+          <article class="rounded-2xl border border-slate-200 p-6 shadow-soft dark:border-slate-800" data-reveal>
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300">🔔</div>
+            <h3 class="font-semibold">Gentle nudges</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Smart reminders that adapt to your rhythm and time zone.</p>
+          </article>
+
+          <article class="rounded-2xl border border-slate-200 p-6 shadow-soft dark:border-slate-800" data-reveal>
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">📈</div>
+            <h3 class="font-semibold">Insights that matter</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Identify your best times, toughest days, and momentum drivers.</p>
+          </article>
+
+          <article class="rounded-2xl border border-slate-200 p-6 shadow-soft dark:border-slate-800" data-reveal>
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">📆</div>
+            <h3 class="font-semibold">Calendar sync</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">See habits in your calendar and plan around real life.</p>
+          </article>
+
+          <article class="rounded-2xl border border-slate-200 p-6 shadow-soft dark:border-slate-800" data-reveal>
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300">💬</div>
+            <h3 class="font-semibold">Friendly check-ins</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Daily prompts that feel like a buddy, not a boss.</p>
+          </article>
+
+          <article class="rounded-2xl border border-slate-200 p-6 shadow-soft dark:border-slate-800" data-reveal>
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200">🔒</div>
+            <h3 class="font-semibold">Private by default</h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Your data is yours. Export anytime. We never sell it.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how" class="py-20">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto mb-10 max-w-2xl text-center">
+          <h2 class="font-display text-3xl font-bold tracking-tight sm:text-4xl">From idea to habit in three steps</h2>
+        </div>
+        <ol class="grid gap-6 sm:grid-cols-3">
+          <li class="rounded-2xl border border-slate-200 p-6 dark:border-slate-800" data-reveal>
+            <div class="mb-2 text-xs uppercase tracking-wide text-slate-500">Step 1</div>
+            <h3 class="font-semibold">Choose your habit</h3>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Pick a tiny, doable action. We’ll help you start small.</p>
+          </li>
+          <li class="rounded-2xl border border-slate-200 p-6 dark:border-slate-800" data-reveal>
+            <div class="mb-2 text-xs uppercase tracking-wide text-slate-500">Step 2</div>
+            <h3 class="font-semibold">Set your rhythm</h3>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Decide when and how often. We’ll nudge you at good times.</p>
+          </li>
+          <li class="rounded-2xl border border-slate-200 p-6 dark:border-slate-800" data-reveal>
+            <div class="mb-2 text-xs uppercase tracking-wide text-slate-500">Step 3</div>
+            <h3 class="font-semibold">Track & celebrate</h3>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Check in daily, keep the streak alive, and watch momentum grow.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section id="testimonials" class="border-y border-slate-100 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/20">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-6 md:grid-cols-3">
+          <figure class="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-950" data-reveal>
+            <blockquote class="text-sm text-slate-700 dark:text-slate-300">“I’ve stuck with daily reading for 120 days. The gentle reminders are perfect.”</blockquote>
+            <figcaption class="mt-3 text-xs text-slate-500">— Ana M., Barcelona</figcaption>
+          </figure>
+          <figure class="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-950" data-reveal>
+            <blockquote class="text-sm text-slate-700 dark:text-slate-300">“Clean design, no bloat. HabitTracker feels like a friend cheering me on.”</blockquote>
+            <figcaption class="mt-3 text-xs text-slate-500">— Luca P., Milan</figcaption>
+          </figure>
+          <figure class="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-950" data-reveal>
+            <blockquote class="text-sm text-slate-700 dark:text-slate-300">“The insights helped me find my best time to exercise. Game-changer.”</blockquote>
+            <figcaption class="mt-3 text-xs text-slate-500">— Sofia R., Madrid</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="py-20">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto mb-10 max-w-2xl text-center">
+          <h2 class="font-display text-3xl font-bold tracking-tight sm:text-4xl">Fair, simple pricing</h2>
+          <p class="mt-3 text-slate-600 dark:text-slate-300">Start free. Upgrade anytime. Cancel whenever.</p>
+        </div>
+
+        <div class="grid items-end gap-6 lg:grid-cols-3">
+          <!-- Free -->
+          <div class="rounded-2xl border border-slate-200 p-6 dark:border-slate-800" data-reveal>
+            <h3 class="font-semibold">Free</h3>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Everything you need to start.</p>
+            <div class="mt-4 text-3xl font-bold">€0<span class="text-base font-medium text-slate-500">/mo</span></div>
+            <ul class="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <li>• Up to 5 habits</li>
+              <li>• Streaks & check-ins</li>
+              <li>• Basic reminders</li>
+            </ul>
+            <a href="#signup" class="mt-6 inline-flex w-full justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-slate-900">Start free</a>
+          </div>
+
+          <!-- Pro -->
+          <div class="relative rounded-2xl border-2 border-slate-900 p-6 shadow-soft dark:border-white" data-reveal>
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-slate-900 px-2 py-1 text-xs font-medium text-white dark:bg-white dark:text-slate-900">Most popular</span>
+            <h3 class="mt-2 font-semibold">Pro</h3>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Go further with focus.</p>
+            <div class="mt-4 text-3xl font-bold">€4<span class="text-base font-medium text-slate-500">/mo</span></div>
+            <ul class="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <li>• Unlimited habits</li>
+              <li>• Smart reminders & skip logic</li>
+              <li>• Calendar sync & weekly review</li>
+              <li>• Export & privacy controls</li>
+            </ul>
+            <a href="#signup" class="mt-6 inline-flex w-full justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-slate-900">Try Pro</a>
+          </div>
+
+          <!-- Teams (optional) -->
+          <div class="rounded-2xl border border-slate-200 p-6 dark:border-slate-800" data-reveal>
+            <h3 class="font-semibold">Teams</h3>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Accountability with friends.</p>
+            <div class="mt-4 text-3xl font-bold">€10<span class="text-base font-medium text-slate-500">/mo</span></div>
+            <ul class="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <li>• Shared challenges</li>
+              <li>• Group streaks</li>
+              <li>• Private by default</li>
+            </ul>
+            <a href="#contact" class="mt-6 inline-flex w-full justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Contact us</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-100 py-12 text-sm dark:border-slate-900">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="grid items-start gap-8 md:grid-cols-4">
+          <div class="md:col-span-2">
+            <a href="/" class="flex items-center gap-2">
+              <div class="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-tr from-blue-500 to-violet-500 text-white">✓</div>
+              <span class="font-display text-base font-semibold tracking-tight">HabitTracker</span>
+            </a>
+            <p class="mt-3 max-w-sm text-slate-600 dark:text-slate-300">Small steps, steady progress. That’s the HabitTracker way.</p>
+          </div>
+
+          <div class="grid gap-3">
+            <div class="font-semibold">Product</div>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#how">How it works</a>
+          </div>
+          <div class="grid gap-3">
+            <div class="font-semibold">Company</div>
+            <a href="#contact">Contact</a>
+            <a href="#privacy">Privacy</a>
+            <a href="#terms">Terms</a>
+          </div>
+        </div>
+        <div class="mt-8 flex items-center justify-between text-xs text-slate-500">
+          <span>© <span id="year"></span> HabitTracker. All rights reserved.</span>
+          <div class="flex items-center gap-4">
+            <a href="#" aria-label="Twitter">🐦</a>
+            <a href="#" aria-label="GitHub">🐙</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Login Modal (optional, posts to /login) -->
+    <div id="loginModal" class="modal-hidden fixed inset-0 z-[100] grid place-items-center bg-black/50 p-4">
+      <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-950">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Welcome back</h3>
+          <button id="closeLogin" class="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-900" aria-label="Close login modal">✕</button>
+        </div>
+        <form class="mt-4 grid gap-3" method="POST" action="/login">
+          <label class="grid gap-1 text-sm">
+            <span>Email</span>
+            <input type="email" name="email" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="you@example.com" />
+          </label>
+          <label class="grid gap-1 text-sm">
+            <span>Password</span>
+            <input type="password" name="password" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="••••••••" />
+          </label>
+          <button type="submit" class="mt-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-slate-900">Log in</button>
+          <div class="text-center text-xs text-slate-500">or</div>
+          <a href="/auth/google" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">
+            <span>Continue with Google</span>
+          </a>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Year
+      document.getElementById('year').textContent = new Date().getFullYear();
+
+      // Theme toggle (persist)
+      const themeToggle = document.getElementById('themeToggle');
+      const root = document.documentElement;
+      const applyTheme = () => {
+        const mode = localStorage.getItem('ht-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        root.classList.toggle('dark', mode === 'dark');
+      };
+      applyTheme();
+      themeToggle?.addEventListener('click', () => {
+        const isDark = root.classList.toggle('dark');
+        localStorage.setItem('ht-theme', isDark ? 'dark' : 'light');
+      });
+
+      // Mobile menu
+      const menuBtn = document.getElementById('menuBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      menuBtn?.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+
+      // Reveal on scroll
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('reveal-in'); });
+      }, { threshold: 0.08 });
+      document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
+
+      // Login modal
+      const loginModal = document.getElementById('loginModal');
+      const openers = [document.getElementById('openLogin'), document.getElementById('openLoginHero'), document.getElementById('openLoginMobile')].filter(Boolean);
+      const closeLogin = document.getElementById('closeLogin');
+      openers.forEach(btn => btn.addEventListener('click', () => loginModal.classList.remove('modal-hidden')));
+      closeLogin?.addEventListener('click', () => loginModal.classList.add('modal-hidden'));
+      loginModal?.addEventListener('click', (e) => { if (e.target === loginModal) loginModal.classList.add('modal-hidden'); });
+
+      // Smooth scroll for hash links
+      document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', (e) => {
+        const id = a.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      }));
+    </script>
+  </body>
+</html>
