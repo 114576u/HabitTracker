@@ -212,7 +212,8 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    #return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
 # -------- API: tags --------
 @app.get('/api/tags')
