@@ -50,8 +50,9 @@
       [data-reveal] { opacity: 0; transform: translateY(12px); transition: .6s ease; }
       .reveal-in { opacity: 1 !important; transform: translateY(0) !important; }
 
-      /* Hide modal by default */
-      .modal-hidden { display: none; }
+      /* Simple popover animation */
+      .pop-enter { transform: translateY(-6px) scale(.98); opacity: 0; }
+      .pop-in { transform: none; opacity: 1; transition: all .16s ease-out; }
     </style>
   </head>
 
@@ -94,14 +95,40 @@
                 <a href="#pricing" class="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Pricing</a>
               </nav>
 
-              <div class="flex items-center gap-2">
-                <button id="openLogin" class="hidden rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50 md:inline-flex dark:border-slate-800 dark:hover:bg-slate-900">
+              <!-- Login popover container -->
+              <div class="relative flex items-center gap-2">
+                <!-- Toggle button -->
+                <button id="loginToggle" aria-controls="loginPanel" aria-expanded="false" class="hidden rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50 md:inline-flex dark:border-slate-800 dark:hover:bg-slate-900">
                   Log in
                 </button>
+
                 <a href="#signup" id="ctaTop" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-slate-900">Start free</a>
                 <button id="menuBtn" class="inline-flex items-center justify-center rounded-lg p-2 md:hidden" aria-label="Open menu">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
+
+                <!-- Popover panel -->
+                <div id="loginPanel" class="pop-enter pointer-events-auto absolute right-0 top-full z-30 mt-2 hidden w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-soft dark:border-slate-800 dark:bg-slate-950">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-base font-semibold">Welcome back</h3>
+                    <button id="loginClose" class="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-900" aria-label="Close login">✕</button>
+                  </div>
+                  <form class="mt-3 grid gap-3" method="POST" action="/login">
+                    <label class="grid gap-1 text-sm">
+                      <span>Email</span>
+                      <input type="email" name="email" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="you@example.com" />
+                    </label>
+                    <label class="grid gap-1 text-sm">
+                      <span>Password</span>
+                      <input type="password" name="password" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="••••••••" />
+                    </label>
+                    <button type="submit" class="mt-1 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-slate-900">Log in</button>
+                    <div class="text-center text-xs text-slate-500">or</div>
+                    <a href="/auth/google" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">
+                      <span>Continue with Google</span>
+                    </a>
+                  </form>
+                </div>
               </div>
             </div>
 
@@ -112,7 +139,23 @@
                 <a href="#how" class="px-2 py-1">How it works</a>
                 <a href="#testimonials" class="px-2 py-1">Love</a>
                 <a href="#pricing" class="px-2 py-1">Pricing</a>
-                <button id="openLoginMobile" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-2 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Log in</button>
+
+                <!-- Collapsible login inside mobile menu -->
+                <button id="mobileLoginToggle" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-2 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Log in</button>
+                <div id="mobileLoginPanel" class="mt-2 hidden rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <form class="grid gap-3" method="POST" action="/login">
+                    <label class="grid gap-1 text-sm">
+                      <span>Email</span>
+                      <input type="email" name="email" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="you@example.com" />
+                    </label>
+                    <label class="grid gap-1 text-sm">
+                      <span>Password</span>
+                      <input type="password" name="password" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="••••••••" />
+                    </label>
+                    <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-slate-900">Log in</button>
+                    <a href="/auth/google" class="mt-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Continue with Google</a>
+                  </form>
+                </div>
               </nav>
             </div>
           </div>
@@ -131,7 +174,7 @@
                 </p>
                 <div class="mt-6 flex flex-wrap items-center gap-3" data-reveal>
                   <a href="#signup" class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-soft hover:opacity-90 dark:bg-white dark:text-slate-900">Start free — no card</a>
-                  <button id="openLoginHero" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Log in</button>
+                  <button id="heroLogin" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">Log in</button>
                   <span class="text-xs text-slate-500 dark:text-slate-400">Free plan • iOS & Android • Web</span>
                 </div>
                 <div class="mt-8 flex items-center gap-6 text-xs text-slate-500 dark:text-slate-400" data-reveal>
@@ -353,31 +396,6 @@
       </div>
     </footer>
 
-    <!-- Login Modal (optional, posts to /login) -->
-    <div id="loginModal" class="modal-hidden fixed inset-0 z-[100] grid place-items-center bg-black/50 p-4">
-      <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-950">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold">Welcome back</h3>
-          <button id="closeLogin" class="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-900" aria-label="Close login modal">✕</button>
-        </div>
-        <form class="mt-4 grid gap-3" method="POST" action="/login">
-          <label class="grid gap-1 text-sm">
-            <span>Email</span>
-            <input type="email" name="email" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="you@example.com" />
-          </label>
-          <label class="grid gap-1 text-sm">
-            <span>Password</span>
-            <input type="password" name="password" required class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-400 dark:border-slate-700 dark:bg-slate-950" placeholder="••••••••" />
-          </label>
-          <button type="submit" class="mt-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 dark:bg-white dark:text-slate-900">Log in</button>
-          <div class="text-center text-xs text-slate-500">or</div>
-          <a href="/auth/google" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900">
-            <span>Continue with Google</span>
-          </a>
-        </form>
-      </div>
-    </div>
-
     <script>
       // Year
       document.getElementById('year').textContent = new Date().getFullYear();
@@ -406,20 +424,65 @@
       }, { threshold: 0.08 });
       document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
 
-      // Login modal
-      const loginModal = document.getElementById('loginModal');
-      const openers = [document.getElementById('openLogin'), document.getElementById('openLoginHero'), document.getElementById('openLoginMobile')].filter(Boolean);
-      const closeLogin = document.getElementById('closeLogin');
-      openers.forEach(btn => btn.addEventListener('click', () => loginModal.classList.remove('modal-hidden')));
-      closeLogin?.addEventListener('click', () => loginModal.classList.add('modal-hidden'));
-      loginModal?.addEventListener('click', (e) => { if (e.target === loginModal) loginModal.classList.add('modal-hidden'); });
-
       // Smooth scroll for hash links
       document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', (e) => {
         const id = a.getAttribute('href').slice(1);
         const el = document.getElementById(id);
         if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       }));
+
+      // ---------- Login popover logic (desktop) ----------
+      const loginToggle = document.getElementById('loginToggle');
+      const loginPanel = document.getElementById('loginPanel');
+      const loginClose = document.getElementById('loginClose');
+      const heroLogin = document.getElementById('heroLogin');
+
+      function openLogin() {
+        if (!loginPanel) return;
+        loginPanel.classList.remove('hidden');
+        // small entrance animation
+        requestAnimationFrame(() => loginPanel.classList.add('pop-in'));
+        loginToggle?.setAttribute('aria-expanded', 'true');
+      }
+      function closeLogin() {
+        if (!loginPanel) return;
+        loginPanel.classList.add('hidden');
+        loginPanel.classList.remove('pop-in');
+        loginToggle?.setAttribute('aria-expanded', 'false');
+      }
+      function toggleLogin() {
+        if (!loginPanel) return;
+        if (loginPanel.classList.contains('hidden')) openLogin(); else closeLogin();
+      }
+
+      loginToggle?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLogin();
+      });
+      loginClose?.addEventListener('click', closeLogin);
+
+      // Click outside to close
+      document.addEventListener('click', (e) => {
+        if (!loginPanel || loginPanel.classList.contains('hidden')) return;
+        const within = loginPanel.contains(e.target) || loginToggle.contains(e.target);
+        if (!within) closeLogin();
+      });
+      // ESC to close
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLogin(); });
+
+      // Hero button opens the same popover and scrolls to top
+      heroLogin?.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // wait a tick for scroll and header to be visible
+        setTimeout(openLogin, 250);
+      });
+
+      // ---------- Mobile login collapsible ----------
+      const mobileLoginToggle = document.getElementById('mobileLoginToggle');
+      const mobileLoginPanel = document.getElementById('mobileLoginPanel');
+      mobileLoginToggle?.addEventListener('click', () => mobileLoginPanel.classList.toggle('hidden'));
+
+
     </script>
   </body>
 </html>

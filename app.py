@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -14,11 +13,11 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-login_manager = LoginManager(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # ------------- Models -------------
-
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
@@ -66,6 +65,7 @@ class MediaEntry(db.Model):
     link = db.Column(db.String(1000), nullable=True)
     category = db.Column(db.String(50), nullable=True)
     rating = db.Column(db.Integer, nullable=True)  # 0..5
+    # tags = db.relationship('Tag', secondary='media_entry_tag', back_populates='tags')
     tags = db.relationship('Tag', secondary='media_entry_tag', back_populates='media_entries')
 
 class Tag(db.Model):
@@ -94,7 +94,6 @@ def load_user(user_id):
         return None
 
 # ------------- Helpers -------------
-
 def init_db():
     with app.app_context():
         db.create_all()
@@ -160,9 +159,17 @@ def parse_date(s: str) -> date:
 
 # ------------- Views -------------
 
-@app.route('/')
+# NEW: Public landing page at "/"
+@app.route("/")
+def landing():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))  # send logged-in users to the app
+    return render_template("public/landing.html")
+
+# RENAMED: Dashboard (your old "/") now protected
+@app.route('/dashboard')
 @login_required
-def index():
+def dashboard():
     return render_template('index.html')
 
 @app.route('/reports')
@@ -171,7 +178,6 @@ def reports_page():
     return render_template('reports.html')
 
 # -------- Auth --------
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -189,17 +195,18 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
-@app.route('/login', methods=['GET', 'POST'])
+#@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['POST'])
 def login():
-    if request.method == 'POST':
-        email = (request.form.get('email') or '').strip().lower()
-        password = request.form.get('password') or ''
-        user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
-            login_user(user); return redirect(url_for('index'))
+    email = request.form.get('email')
+    password = request.form.get('password')
+    user = User.query.filter_by(email=email).first()
+    if user and check_password_hash(user.password, password):
+        login_user(user)
+        return redirect(url_for('dashboard'))  # Only redirect if login succeeds
+    else:
         flash('Invalid email or password', 'error')
-        return redirect(url_for('login'))
-    return render_template('login.html')
+        return redirect(url_for('index'))  # Send back to landing page on failure
 
 @app.route('/logout')
 @login_required
@@ -208,7 +215,6 @@ def logout():
     return redirect(url_for('login'))
 
 # -------- API: tags --------
-
 @app.get('/api/tags')
 @login_required
 def api_tags():
@@ -216,7 +222,6 @@ def api_tags():
     return jsonify([t.name for t in tags])
 
 # -------- API: data --------
-
 @app.get('/api/data')
 @login_required
 def api_data():
@@ -230,7 +235,9 @@ def api_data():
             elif h.kind == 'numeric' and not h.allow_multi:
                 rec_map[r.date] = {'value': r.value or 0}
         if h.kind == 'numeric' and h.allow_multi:
-            rows = db.session.execute(text("SELECT date, SUM(value) as total FROM numeric_entry WHERE habit_id = :hid GROUP BY date"), { 'hid': h.id }).mappings().all()
+            rows = db.session.execute(text(
+                "SELECT date, SUM(value) as total FROM numeric_entry WHERE habit_id = :hid GROUP BY date"
+            ), {'hid': h.id}).mappings().all()
             for row in rows:
                 rec_map[row['date']] = {'value': row['total'] or 0}
         payload.append({
@@ -243,7 +250,6 @@ def api_data():
     return jsonify({'today': date.today().isoformat(), 'habits': payload})
 
 # -------- API: activity (calendar heat base) --------
-
 @app.get('/api/activity')
 @login_required
 def api_activity():
@@ -283,7 +289,6 @@ def api_activity():
     return jsonify({'month': month, 'dateCounts': date_counts})
 
 # -------- API: media --------
-
 @app.get('/api/media/list')
 @login_required
 def api_media_list():
@@ -381,12 +386,11 @@ def api_numeric_clear():
     db.session.commit(); return jsonify({'ok': True})
 
 # -------- Habit APIs --------
-
 @app.post('/api/habits/add')
 @login_required
 def api_add_habit():
     data = request.json or {}
-    print("Received habit data:", data)  # ← Add this line
+    print("Received habit data:", data)  # ← debug
     name = (data.get('name') or '').strip()
     kind = data.get('kind') or 'checkbox'
     color = data.get('color') or '#6366f1'
@@ -463,7 +467,6 @@ def api_delete_habit():
     db.session.delete(h); db.session.commit()
     return jsonify({'ok': True})
 
-
 @app.get('/api/habit/values')
 @login_required
 def get_habit_values():
@@ -485,7 +488,6 @@ def get_habit_values():
     else:
         return jsonify({'value': None})
 
-
 @app.post('/api/habit/delete-value')
 @login_required
 def delete_habit_value():
@@ -504,8 +506,6 @@ def delete_habit_value():
         db.session.commit()
     return jsonify({'success': True})
 
-
-
 @app.post('/api/toggle')
 @login_required
 def api_toggle():
@@ -519,7 +519,6 @@ def api_toggle():
         rec.done = not rec.done
     db.session.commit(); return jsonify({'ok': True})
 
-
 @app.post('/api/clear')
 @login_required
 def api_clear():
@@ -529,6 +528,27 @@ def api_clear():
     rec = Record.query.filter_by(habit_id=h.id, date=day).first()
     if rec: db.session.delete(rec); db.session.commit()
     return jsonify({'ok': True})
+
+@app.post('/api/login')
+def api_login():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+    if not email or not password:
+        return jsonify({'ok': False, 'error': 'Email and password are required.'}), 400
+    user = User.query.filter_by(email=email).first()
+    if user and user.check_password(password):
+        login_user(user)
+        return jsonify({'ok': True, 'redirect': url_for('dashboard')})
+    return jsonify({'ok': False, 'error': 'Invalid email or password.'}), 401
+
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('landing.html')
+
 
 # -------- Streak helper --------
 def compute_streaks(records_dates_set):
@@ -580,7 +600,6 @@ def normalize_rows(rows):
     return out
 
 # -------- API: reports --------
-
 @app.get('/api/reports')
 @login_required
 def api_reports():
@@ -610,7 +629,6 @@ def api_reports():
     else:  # week: Monday..Sunday
         start_date = base - timedelta(days=(base.weekday()))  # Monday
         end_date = start_date + timedelta(days=6)
-
     s = start_date.strftime('%Y-%m-%d'); e = end_date.strftime('%Y-%m-%d')
 
     # Habits (apply tag filter at habit level)
@@ -672,7 +690,8 @@ def api_reports():
     ms, me = month_start.strftime('%Y-%m-%d'), month_end.strftime('%Y-%m-%d')
 
     goals = []
-    for h in Habit.query.filter_by(user_id=current_user.id, active=True).all():
+    # Use filtered habits list here too
+    for h in habits:
         if h.monthly_goal is None or h.monthly_goal <= 0:
             continue
         cnt = sum(1 for r in h.records if ms <= r.date <= me and r.done)
@@ -687,14 +706,14 @@ def api_reports():
         })
 
     rows.sort(key=sort_key)
-    
+
     # Period totals (by habit) and streaks
     period_totals = []
     # Build map for quick day checks per habit for streaks
     from collections import defaultdict
     habit_done_dates = defaultdict(set)
-    # Collect done dates across all time for streaks
-    for h in Habit.query.filter_by(user_id=current_user.id, active=True).all():
+    # Collect done dates across all time for streaks (use filtered habits)
+    for h in habits:
         if h.kind == 'checkbox':
             for r in h.records:
                 if r.done:
@@ -705,16 +724,16 @@ def api_reports():
                 if (r.value or 0) > 0:
                     habit_done_dates[h.id].add(r.date)
             # multi: any numeric entries on a day → done
-            multi_rows = db.session.execute(text("SELECT date, SUM(value) as total FROM numeric_entry WHERE habit_id = :hid GROUP BY date"),
-                                            {'hid': h.id}
-                        ).mappings().all()
+            multi_rows = db.session.execute(text(
+                "SELECT date, SUM(value) as total FROM numeric_entry WHERE habit_id = :hid GROUP BY date"
+            ), {'hid': h.id}).mappings().all()
             for r in multi_rows:
                 if (r['total'] or 0) > 0:
                     habit_done_dates[h.id].add(r['date'])
 
-    # For the selected period, compute totals by habit
+    # For the selected period, compute totals by habit (use filtered habits)
     totals_map = defaultdict(lambda: {'habit': '', 'kind': '', 'color': '#6366f1', 'unit': None, 'count': 0, 'sum': 0.0})
-    for h in Habit.query.filter_by(user_id=current_user.id, active=True).all():
+    for h in habits:
         key = h.id
         totals_map[key]['habit'] = h.name
         totals_map[key]['kind'] = h.kind
@@ -722,8 +741,6 @@ def api_reports():
         totals_map[key]['unit'] = h.unit
         # count of days done in [s,e]
         if h.kind in ('checkbox', 'numeric'):
-            # For numeric, 'done' means value>0 (or any entries)
-            # Use rows and records to compute both count and sum in period
             # Boolean count:
             dates_in_range = [d for d in habit_done_dates[h.id] if s <= d <= e]
             totals_map[key]['count'] = len(dates_in_range)
@@ -735,9 +752,9 @@ def api_reports():
                     if s <= r.date <= e:
                         sum_val += float(r.value or 0)
                 # add multi entries
-                total_result = db.session.execute(text("SELECT SUM(value) as total FROM numeric_entry WHERE habit_id = :hid AND date >= :s AND date <= :e"),
-                                          {'hid': h.id, 's': s, 'e': e}
-                                ).mappings().first()
+                total_result = db.session.execute(text(
+                    "SELECT SUM(value) as total FROM numeric_entry WHERE habit_id = :hid AND date >= :s AND date <= :e"
+                ), {'hid': h.id, 's': s, 'e': e}).mappings().first()
                 sum_val += float(total_result['total'] or 0)
                 totals_map[key]['sum'] = round(sum_val, 2)
 
@@ -745,19 +762,21 @@ def api_reports():
         cur, best = compute_streaks(habit_done_dates[key])
         v['currentStreak'] = cur
         v['bestStreak'] = best
+        # attach tags for each summary row
+        h = next((hh for hh in habits if hh.id == key), None)
+        v['tags'] = [t.name for t in h.tags] if h else []
         period_totals.append(v)
+
     return jsonify({
-            'start': s,
-            'end': e,
-            'period': period,
-            'count': len(rows),
-            'rows': normalize_rows(rows),
-            'summary': period_totals,
-            'goalsMonth': month_start.strftime('%Y-%m'),
-            'goals': goals
-        })
-
-
+        'start': s,
+        'end': e,
+        'period': period,
+        'count': len(rows),
+        'rows': normalize_rows(rows),
+        'summary': period_totals,
+        'goalsMonth': month_start.strftime('%Y-%m'),
+        'goals': goals
+    })
 
 class NumericEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -765,7 +784,6 @@ class NumericEntry(db.Model):
     date = db.Column(db.String(10), nullable=False, index=True)
     value = db.Column(db.Float, nullable=False, default=0.0)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
 
 @app.post('/api/habits/active')
 @login_required
@@ -777,7 +795,6 @@ def api_habit_active():
     h.active = on
     db.session.commit()
     return jsonify({'ok': True, 'active': h.active})
-
 
 # -------- Export CSV --------
 from flask import Response
@@ -899,17 +916,13 @@ def export_csv():
     filename = f"habit_export_{s}_to_{e}.csv"
     return Response(csv_bytes, mimetype='text/csv', headers={'Content-Disposition': f'attachment; filename={filename}'})
 
-
-
 @app.route('/habits')
 @login_required
 def habits():
     habits = get_all_habits()
     return render_template("habits.html", habits=habits)
 
-
 import sqlite3
-
 def get_db_connection():
     conn = sqlite3.connect('C:/Users/josep/PycharmProjects/HabitTracker/instance/app.db')
     conn.row_factory = sqlite3.Row
@@ -921,24 +934,21 @@ def get_all_habits():
     conn.close()
     return [dict(row) for row in habits]
 
-
 @app.route("/api/delete_habit/<int:habit_id>", methods=["DELETE"])
 @login_required
 def delete_habit(habit_id):
-    db = get_db_connection()
+    db_conn = get_db_connection()
     try:
-        result = db.execute(
+        result = db_conn.execute(
             "DELETE FROM habit WHERE id = ? AND user_id = ?", (habit_id, current_user.id)
         )
-        db.commit()
-        db.close()
+        db_conn.commit()
+        db_conn.close()
         if result.rowcount == 0:
             return jsonify({"success": False, "message": "Habit not found or not yours"}), 404
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
-
-
 
 @login_manager.unauthorized_handler
 def unauthorized():
@@ -946,11 +956,7 @@ def unauthorized():
         return jsonify({"success": False, "message": "Login required"}), 401
     return redirect(url_for("login"))
 
-
-
 # ------------- Startup -------------
-
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
-

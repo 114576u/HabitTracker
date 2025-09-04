@@ -21,27 +21,61 @@ async function runReport() {
   url.searchParams.set('period', period);
   url.searchParams.set('start', start);
   url.searchParams.set('sort', sort);
-  if (tag) url.searchParams.set('tag', tag);
+  // if (tag) url.searchParams.set('tag', tag);
 
   const r = await fetch(url.toString());
   const data = await r.json();
 
+   console.log(data);
+
   document.getElementById('repMeta').textContent = `Showing ${data.count} rows • ${data.start} → ${data.end}`;
 
-  if (tag) {
-    document.getElementById('repMeta').textContent += ` • Tag filter: "${tag}"`;
-  }
+  //if (tag) {
+  //  document.getElementById('repMeta').textContent += ` • Tag filter: "${tag}"`;
+  //}
+
+const repTableBody = document.querySelector('#repTable tbody');
+repTableBody.innerHTML = ''; // clear old rows
+
+for (const row of data.rows) {
+  if (row.type !== 'habit') continue;
+  const tr = document.createElement('tr');
+  const tags = (row.tags || []).join(', ');
+  console.log("*********")
+  console.log(row);
+  console.log(tags);
+  console.log("*********")
+  tr.innerHTML = `
+    <td>${row.date}</td>
+    <td>${row.habit}</td>
+    <td>${row.kind}</td>
+    <td>${row.done}</td>
+    <td>${tags}</td>
+  `;
+  repTableBody.appendChild(tr);
+}
+
 
   // Build a tag map per habit from data.rows
-  const habitTagMap = {};
-  for (const row of (data.rows || [])) {
-    if (row.type === 'habit' && row.habit) {
-      if (!habitTagMap[row.habit]) {
-        habitTagMap[row.habit] = row.tags || [];
-      }
-    }
-  }
+//  const habitTagMap = {};
+//  rowTags = [];
+//  for (const row of (data.rows || [])) {
+//    console.log("inside loop");
+//    console.log(row.tags);
+//    console.log(row)
+    //if (row.type === 'habit' && row.habit) {
+    //  if (!habitTagMap[row.habit]) {
+    //    habitTagMap[row.habit] = row.tags || [];
+//        habitTagMap[row] = row.tags || [];
+//        console.log("habitTagMap")
+//        console.log(habitTagMap)
 
+    //  }
+    //}
+//  }
+
+  //  console.log("habitTagMap")
+  //  console.log(habitTagMap)
 
 
   // Unified Habit Table
