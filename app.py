@@ -201,12 +201,12 @@ def login():
     email = request.form.get('email')
     password = request.form.get('password')
     user = User.query.filter_by(email=email).first()
-    if user and check_password_hash(user.password, password):
+    if user and user.check_password(password):  # ✅ use method defined in your model
         login_user(user)
-        return redirect(url_for('dashboard'))  # Only redirect if login succeeds
+        return redirect(url_for('dashboard'))
     else:
         flash('Invalid email or password', 'error')
-        return redirect(url_for('index'))  # Send back to landing page on failure
+        return redirect(url_for('index'))
 
 @app.route('/logout')
 @login_required
